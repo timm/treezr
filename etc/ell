@@ -15,7 +15,7 @@ export PATH="$Here:$PATH"
 # Colors & prompt
 bold=$(tput bold) col0=$(tput sgr0) col1=$(tput setaf 6) col2=$(tput setaf 3)
 branch() { git branch 2>/dev/null | awk '/^\*/ {print $2}'; }
-PROMPT_COMMAND='PS1="👀 ${bold}${col1}${Xdir}${col0} ${col1}$(basename "$(dirname "$PWD")")/$(basename "$PWD")${col0} ${col2}$(branch)${col0} ▶ "'
+PROMPT_COMMAND='PS1="🌴 ${bold}${col1}${Xdir}${col0} ${col1}$(basename "$(dirname "$PWD")")/$(basename "$PWD")${col0} ${col2}$(branch)${col0} ▶ "'
 
 # Essential aliases
 alias ..='cd ..' c='clear' Q='exit'

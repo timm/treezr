@@ -88,9 +88,10 @@ def add(x: o, v:Any, inc=1) -> Any:
       x.m2 += inc * (d * (v - x.mu))
       x.sd  = 0 if x.n < 2 else (max(0,x.m2)/(x.n-1))**.5
   elif x.it is Data:
+    v =  v if hasattr(v,"it") else Row(v)  
     x.mid = None
     x.n += inc
-    if inc > 0: x.rows += [Row(v)]
+    if inc > 0: x.rows += [v]
     [add(col, v.cells[col.at], inc) for col in x.cols.all]
   return v
 
@@ -217,6 +218,12 @@ def treeShow(data:Data, key=lambda d: d.ys.mu) -> None:
   print(len(data.cols.x), len(used), ', '.join(used))
 
 #--------------------------------------------------------------------
+def cdf(x,mu,sd):
+  def cdf1(z): return 1 - 0.5*2.718**(-0.717*z - 0.416*z*z)
+  z = (x - mu) / sd
+  return cdf1(z) if z >= 0 else 1 - cdf1(-z)
+
+#--------------------------------------------------------------------
 def fyi(s, end=""):
   "write the standard error (defaults to no new line)"
   print(s, file=sys.stderr, flush=True, end=end)
@@ -256,6 +263,7 @@ def _main(settings : o, funs: dict[str,callable]) -> o:
 def demo():
   "The usual run"
   data = Data(csv(the.file))
+  [print(y) for y in data.cols.y]
 
 def main():
   "top-level call"
