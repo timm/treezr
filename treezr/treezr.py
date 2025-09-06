@@ -1,0 +1,266 @@
+#!/usr/bin/env python3 
+"""
+treezr.py: unsupervised tree learning for multi-objective optimization   
+(c) 2025, Tim Menzies <timm@ieee.org>, MIT license   
+   
+    -A  Any=4             on init, how many initial guesses?   
+    -B  Budget=30         when growing theory, how many labels?   
+    -C  Check=5           budget for checking learned model
+    -F  Few=128           sample size of data random sampling  
+    -l  leaf=3            min items in tree leaves
+    -s  seed=1234567891   random number seed   
+    -f  file=../moot/optimize/misc/auto93.csv    data file 
+    -h                     show help   
+"""
+from types import SimpleNamespace as o
+from typing import Any,List,Iterator
+import traceback, random, time, math, sys, re
+
+sys.dont_write_bytecode = True
+
+Number = int|float
+Atom   = Number|str|bool
+Row    = List[Atom]
+
+big    = 1e32
+
+#--------------------------------------------------------------------
+def label(row): 
+  "Stub. Ensure a row is labelled."
+  return row
+
+#--------------------------------------------------------------------
+def Num(at=0,s=" "): 
+  "Create a numeric column summarizer"
+  return o(it=Num, at=at, txt=s, n=0, mu=0, m2=0, sd=0, 
+           hi=-big, lo=big, more = 0 if s[-1] == "-" else 1)
+
+def Sym(at=0,s=" "): 
+  "Create a symbolic column summarizer"
+  return o(it=Sym, at=at, txt=s, n=0, has={})
+
+def Row(cells):
+  return o(it=Row, cells=cells, bins=[])
+
+def Cols(names : List[str]) -> o:
+  "Create column summaries from column names"
+  all=[(Num if s[0].isupper() else Sym)(c,s) for c,s in enumerate(names)]
+  klass=None
+  for col in all: 
+    if col.txt[-1]=="!": klass=col
+  return o(it=Cols, names = names, all = all, klass = klass,
+           x = [col for col in all if col.txt[-1] not in "X-+"],
+           y = [col for col in all if col.txt[-1] in "-+"])
+
+def Data(src) -> o:
+  "Create data structure from source rows"
+  src = iter(src)
+  return adds(src, o(it=Data, n=0, mid=None, rows=[], kids=[], ys=None,
+                     cols=Cols(next(src)))) # kids=[], how=[], ys=None))
+
+def clone(data:Data, rows=None) -> o:
+  "Create new Data with same columns but different rows"
+  return adds(rows or [], Data([data.cols.names]))
+
+#--------------------------------------------------------------------
+def adds(src, it=None) -> o:
+  "Add multiple items to a summarizer"
+  it = it or Num()
+  [add(it,x) for x in src]
+  return it
+
+def sub(x:o, v:Any, zap=False) -> Any: 
+  "Remove value from summarizer"
+  return add(x,v,-1,zap)
+
+def add(x: o, v:Any, inc=1) -> Any:
+  "incrementally update Syms,Nums or Datas"
+  if v == "?": return v
+  if x.it is Sym: x.has[v] = inc + x.has.get(v,0)
+  elif x.it is Num:
+    x.n += inc
+    x.lo, x.hi = min(v, x.lo), max(v, x.hi)
+    if inc < 0 and x.n < 2:
+      x.sd = x.m2 = x.mu = x.n = 0
+    else:
+      d     = v - x.mu
+      x.mu += inc * (d / x.n)
+      x.m2 += inc * (d * (v - x.mu))
+      x.sd  = 0 if x.n < 2 else (max(0,x.m2)/(x.n-1))**.5
+  elif x.it is Data:
+    x.mid = None
+    x.n += inc
+    if inc > 0: x.rows += [Row(v)]
+    [add(col, v.cells[col.at], inc) for col in x.cols.all]
+  return v
+
+#--------------------------------------------------------------------
+def norm(num:Num, v:float) -> float:  
+  "Normalize a value to 0..1 range"
+  return  v if v=="?" else (v - num.lo) / (num.hi - num.lo + 1E-32)
+
+def mids(data: Data) -> Row:
+  "Get central tendencies of all columns"
+  data.mid = data.mid or [mid(col) for col in data.cols.all]
+  return data.mid
+
+def mid(col: o) -> Atom:
+  "Get central tendency of one column"
+  return max(col.has, key=col.has.get) if col.it is Sym else col.mu
+
+def divs(data:Data) -> float:
+  "Return the central tendency for each column."
+  return [div(col) for col in data.cols.all]
+
+def div(col:o) -> float:
+  "Return the central tendnacy for one column."
+  if col.it is Num: return col.sd
+  vs = col.has.values()
+  N  = sum(vs)
+  return -sum(p*math.log(p,2) for n in vs if (p:=n/N) > 0)
+
+#--------------------------------------------------------------------
+def dist(src) -> float:
+  "Calculate Minkowski distance"
+  d,n = 0,0
+  for v in src: n,d = n+1, d + v**the.p;
+  return (d/n) ** (1/the.p)
+
+def disty(data:Data, row:Row) -> float:
+  "Distance from row to best y-values"
+  return dist(abs(norm(c, row.cells[c.at]) - c.more) for c in data.cols.y)
+
+def distysort(data:Data,rows=None) -> List[Row]:
+  "Sort rows by distance to best y-values"
+  return sorted(rows or data.rows, key=lambda r: disty(data,r))
+
+#--------------------------------------------------------------------
+treeOps = {'<=' : lambda x,y: x <= y, 
+           '==' : lambda x,y:x == y, 
+           '>'  : lambda x,y:x > y}
+
+def treeSelects(row:Row, op:str, at:int, y:Atom) -> bool: 
+  "Have we selected this row?"
+  return (x := row[at]) == "?" or treeOps[op](x, y)
+
+def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
+  "Create regression tree."
+  Y = Y or (lambda row: disty(data, row))
+  data.kids, data.how = [], how
+  data.ys = adds(Y(row) for row in data.rows)
+  if len(data.rows) >= the.leaf:
+    hows = [how for col in data.cols.x 
+            if (how := treeCuts(col,data.rows,Y,Klass))]
+    if hows:
+      for how1 in min(hows, key=lambda c: c.div).hows:
+        rows1 = [r for r in data.rows if treeSelects(r, *how1)]
+        if the.leaf <= len(rows1) < len(data.rows):
+          data.kids += [Tree(clone(data,rows1), Klass, Y, how1)]
+  return data
+
+def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> o:
+  "Divide a col into ranges."
+  def _sym(sym):
+    d, n = {}, 0
+    for row in rows:
+      if (x := row.cells[col.at]) != "?":
+        n += 1
+        d[x] = d.get(x) or Klass()
+        add(d[x], Y(row))
+    return o(div = sum(c.n/n * div(c) for c in d.values()),
+             hows = [("==",col.at,x) for x in d])
+
+  def _num(num):
+    out, b4, lhs, rhs = None, None, Klass(), Klass()
+    xys = [(row.cells[col.at], add(rhs, Y(row))) # add returns the "y" value
+           for row in rows if row.cells[col.at] != "?"]
+    for x, y in sorted(xys, key=lambda z: z[0]):
+      if x != b4 and the.leaf <= lhs.n <= len(xys) - the.leaf:
+        now = (lhs.n * lhs.sd + rhs.n * rhs.sd) / len(xys)
+        if not out or now < out.div:
+          out = o(div=now, hows=[("<=",col.at,b4), (">",col.at,b4)])
+      add(lhs, sub(rhs, y))
+      b4 = x
+    return out
+
+  return (_sym if col.it is Sym else _num)(col)
+
+#--------------------------------------------------------------
+def treeNodes(data:Data, lvl=0, key=None) -> Data:
+  "iterate over all treeNodes"
+  yield lvl, data
+  for j in sorted(data.kids, key=key) if key else data.kids:
+    yield from treeNodes(j,lvl + 1, key)
+
+def treeLeaf(data:Data, row:Row, lvl=0) -> Data:
+  "Select a matching leaf"
+  for j in data.kids:
+    if treeSelects(row, *j.how): return treeLeaf(j,row,lvl+1)
+  return data
+
+def treeShow(data:Data, key=lambda d: d.ys.mu) -> None:
+  "Display tree with rows and win columns"
+  ats = {}
+  print(f"{'#rows':>6} {'win':>4}")
+  for lvl, d in treeNodes(data, key=key): #\n{100}#
+    if lvl == 0: continue
+    op, at, y = d.how
+    name = data.cols.names[at]
+    indent = '|  ' * (lvl - 1)
+    expl = f"if {name} {op} {y}"
+    score = int(100 * (1 - (d.ys.mu - data.ys.lo) /
+             (data.ys.mu - data.ys.lo + 1e-32)))
+    leaf = ";" if not d.kids else ""
+    print(f"{d.ys.n:6} {score:4}    {indent}{expl}{leaf}")
+    ats[at] = 1
+  used = [data.cols.names[at] for at in sorted(ats)]
+  print(len(data.cols.x), len(used), ', '.join(used))
+
+#--------------------------------------------------------------------
+def fyi(s, end=""):
+  "write the standard error (defaults to no new line)"
+  print(s, file=sys.stderr, flush=True, end=end)
+
+def coerce(s:str) -> Atom:
+  "coerce a string to int, float, bool, or trimmed string"
+  for fn in [int,float]:
+    try: return fn(s)
+    except Exception as _: pass
+  s = s.strip()
+  return {'True':True,'False':False}.get(s,s)
+
+def csv(file: str ) -> Iterator[Row]:
+  "Returns rows of a csv file."
+  with open(file,encoding="utf-8") as f:
+    for line in f:
+      if (line := line.split("%")[0]):
+        yield [coerce(s) for s in line.split(",")]
+
+def shuffle(lst:List) -> List:
+  "shuffle a list, in place"
+  random.shuffle(lst); return lst
+
+def _main(settings : o, funs: dict[str,callable]) -> o:
+  "from command line, update config find functions to call"
+  for n,s in enumerate(sys.argv):
+    if (fn := funs.get(f"eg{s.replace('-', '_')}")):
+     try: random.seed(settings.seed); fn()
+     except Exception as e:
+       print("Error:", e)
+       traceback.print_exc()
+    else:
+      for key in vars(settings):
+        if s=="-"+key[0]: 
+          settings.__dict__[key] = coerce(sys.argv[n+1])
+
+def demo():
+  "The usual run"
+  data = Data(csv(the.file))
+
+def main():
+  "top-level call"
+  _main(the,globals()); demo()
+
+#---------------------------------------------------------------------
+the = o(**{k:coerce(v) for k,v in re.findall(r"(\w+)=(\S+)",__doc__)})
+if __name__ == "__main__": main();
