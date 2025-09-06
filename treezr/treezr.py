@@ -8,6 +8,7 @@ treezr.py: unsupervised tree learning for multi-objective optimization
     -C  Check=5           budget for checking learned model
     -F  Few=64            sample size of data random sampling  
     -l  leaf=3            min items in tree leaves
+    -p  p=2               distance coeffecient
     -s  seed=1234567891   random number seed   
     -f  file=../moot/optimize/misc/auto93.csv    data file 
     -h                     show help   
@@ -20,6 +21,7 @@ sys.dont_write_bytecode = True
 
 Number = int|float
 Atom   = Number|str|bool
+Row    = List[Atom]
 
 big    = 1e32
 
@@ -36,10 +38,7 @@ def Num(at=0,s=" ") -> o:
 
 def Sym(at=0,s=" ") -> o: 
   "Create a symbolic column summarizer"
-  return o(it=Sym, at=at, txt=s, n=0, most=0, model=None, has={})
-
-def Row(cells: List[Atom]) -> o:
-  return o(it=Row, cells=cells, bins=[])
+  return o(it=Sym, at=at, txt=s, n=0, most=0, mode=None, has={})
 
 def Cols(names : List[str]) -> o:
   "Create column summaries from column names"
@@ -68,27 +67,36 @@ def adds(src, it=None) -> o:
   [add(it,x) for x in src]
   return it
 
-def add(x: o, v:Any) -> Any:
+def sub(x:o, v:Any, zap=False) -> Any: 
+  "Remove value from summarizer"
+  return add(x,v,-1,zap)
+
+def add(x: o, v:Any, inc=1, zap=False) -> Any:
   "incrementally update Syms,Nums or Datas"
   if v == "?": return v
-  x.n += 1
+  x.n += inc
   if x.it is Sym: 
-    tmp = x.has[v] = x.has.get(v,0)
-    if tmp > x.mode:
-      x.mode, x.most = v, tmp
+    tmp = x.has[v] = inc + x.has.get(v,0)
+    if tmp > x.most:
+      x.most, x.mode = v, tmp
   elif x.it is Num:
     x.lo, x.hi = min(v, x.lo), max(v, x.hi)
-    d     = v - x.mu
-    x.mu += (d / x.n)
-    x.m2 += (d * (v - x.mu))
-    x.sd  = 0 if x.n < 2 else (max(0,x.m2)/(x.n-1))**.5
+    if inc < 0 and x.n < 2:
+      x.sd = x.m2 = x.mu = x.n = 0
+    else:
+      d     = v - x.mu
+      x.mu += inc * (d / x.n)
+      x.m2 += inc * (d * (v - x.mu))
+      x.sd  = 0 if x.n < 2 else (max(0,x.m2)/(x.n-1))**.5
   elif x.it is Data:
-    v =  v if hasattr(v,"it") else Row(v)  
     x.mid = None
-    x.rows += [v]
-    [add(col, v.cells[col.at]) for col in x.cols.all]
-  else: raise TypeError(f"cannot add to {type(x)")
+    if inc > 0: x.rows += [v]
+    elif zap: x.rows.remove(v) # slow for long rows
+    [add(col, v[col.at], inc) for col in x.cols.all]
+  else: 
+    raise TyoeError("cannot add to {type(x)}")
   return v
+
 
 #--------------------------------------------------------------------
 def norm(num:Num, v:float) -> float:  
@@ -111,9 +119,7 @@ def divs(data:Data) -> float:
 def div(col:o) -> float:
   "Return the central tendnacy for one column."
   if col.it is Num: return col.sd
-  vs = col.has.values()
-  N  = sum(vs)
-  return -sum(p*math.log(p,2) for n in vs if (p:=n/N) > 0)
+  return -sum(p*math.log(p,2) for n in col.has.values() if (p:=n/col.n) > 0)
 
 #--------------------------------------------------------------------
 def dist(src) -> float:
@@ -124,7 +130,7 @@ def dist(src) -> float:
 
 def disty(data:Data, row:Row) -> float:
   "Distance from row to best y-values"
-  return dist(abs(norm(c, row.cells[c.at]) - c.more) for c in data.cols.y)
+  return dist(abs(norm(c, row[c.at]) - c.more) for c in data.cols.y)
 
 def distysort(data:Data,rows=None) -> List[Row]:
   "Sort rows by distance to best y-values"
@@ -154,18 +160,21 @@ def distFastmap(data,rows):
 
 def distClusters(data, rows=None):
   "Assign rows to clusters using recursive random projections."
+  ids  = {}
+  rows = shuffle(rows or data.rows)
+  stop = len(rows)**.5
+  some = {}
   def worker(rows, cid):
     n = len(rows) // 2
     if n > stop:
       rows = distFastmap(data,rows)
-      return worker(rows[:n], 1 + worker(rows[n:], stop, cid))
+      for r in [rows[0], rows[n], rows[-1]]: some[id(r)] = r  
+      return worker(rows[:n], 1 + worker(rows[n:], cid))
     else:
-      for row in rows: row.cluster = cid
+      for row in rows: ids[id(row)] = cid
       return cid
-  rows = shuffle(rows or data.rows)
-  stop = len(rows)**.33
   worker(rows, 1)
-  return rows
+  return ids, some
 
 #--------------------------------------------------------------------
 treeOps = {'<=' : lambda x,y: x <= y, 
@@ -196,20 +205,21 @@ def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> o:
   def _sym(sym):
     d, n = {}, 0
     for row in rows:
-      if (x := row.cells[col.at]) != "?":
+      if (x := row[col.at]) != "?":
         n += 1
         d[x] = d.get(x) or Klass()
+        print(Klass)
         add(d[x], Y(row))
     return o(div = sum(c.n/n * div(c) for c in d.values()),
              hows = [("==",col.at,x) for x in d])
 
   def _num(num):
     out, b4, lhs, rhs = None, None, Klass(), Klass()
-    xys = [(row.cells[col.at], add(rhs, Y(row))) # add returns the "y" value
-           for row in rows if row.cells[col.at] != "?"]
+    xys = [(row[col.at], add(rhs, Y(row))) # add returns the "y" value
+           for row in rows if row[col.at] != "?"]
     for x, y in sorted(xys, key=lambda z: z[0]):
       if x != b4 and the.leaf <= lhs.n <= len(xys) - the.leaf:
-        now = (lhs.n * lhs.sd + rhs.n * rhs.sd) / len(xys)
+        now = (lhs.n * div(lhs) + rhs.n * div(rhs)) / len(xys)
         if not out or now < out.div:
           out = o(div=now, hows=[("<=",col.at,b4), (">",col.at,b4)])
       add(lhs, sub(rhs, y))
@@ -295,7 +305,12 @@ def _main(settings : o, funs: dict[str,callable]) -> o:
 def demo():
   "The usual run"
   data = Data(csv(the.file))
-  [print(y) for y in data.cols.y]
+  ids, some = distClusters(data)
+  print(div(adds(ids.values(),Sym())))
+  def Y(row): return ids[id(row)]
+  treeShow(Tree(clone(data, some.values()),
+                Y=Y,
+                Klass=Sym))
 
 def main():
   "top-level call"
