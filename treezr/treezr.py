@@ -6,7 +6,7 @@ treezr.py: unsupervised tree learning for multi-objective optimization
     -A  Any=4             on init, how many initial guesses?   
     -B  Budget=30         when growing theory, how many labels?   
     -C  Check=5           budget for checking learned model
-    -F  Few=128           sample size of data random sampling  
+    -F  Few=64            sample size of data random sampling  
     -l  leaf=3            min items in tree leaves
     -s  seed=1234567891   random number seed   
     -f  file=../moot/optimize/misc/auto93.csv    data file 
@@ -20,7 +20,6 @@ sys.dont_write_bytecode = True
 
 Number = int|float
 Atom   = Number|str|bool
-Row    = List[Atom]
 
 big    = 1e32
 
@@ -30,16 +29,16 @@ def label(row):
   return row
 
 #--------------------------------------------------------------------
-def Num(at=0,s=" "): 
+def Num(at=0,s=" ") -> o: 
   "Create a numeric column summarizer"
   return o(it=Num, at=at, txt=s, n=0, mu=0, m2=0, sd=0, 
            hi=-big, lo=big, more = 0 if s[-1] == "-" else 1)
 
-def Sym(at=0,s=" "): 
+def Sym(at=0,s=" ") -> o: 
   "Create a symbolic column summarizer"
-  return o(it=Sym, at=at, txt=s, n=0, has={})
+  return o(it=Sym, at=at, txt=s, n=0, most=0, model=None, has={})
 
-def Row(cells):
+def Row(cells: List[Atom]) -> o:
   return o(it=Row, cells=cells, bins=[])
 
 def Cols(names : List[str]) -> o:
@@ -69,30 +68,26 @@ def adds(src, it=None) -> o:
   [add(it,x) for x in src]
   return it
 
-def sub(x:o, v:Any, zap=False) -> Any: 
-  "Remove value from summarizer"
-  return add(x,v,-1,zap)
-
-def add(x: o, v:Any, inc=1) -> Any:
+def add(x: o, v:Any) -> Any:
   "incrementally update Syms,Nums or Datas"
   if v == "?": return v
-  if x.it is Sym: x.has[v] = inc + x.has.get(v,0)
+  x.n += 1
+  if x.it is Sym: 
+    tmp = x.has[v] = x.has.get(v,0)
+    if tmp > x.mode:
+      x.mode, x.most = v, tmp
   elif x.it is Num:
-    x.n += inc
     x.lo, x.hi = min(v, x.lo), max(v, x.hi)
-    if inc < 0 and x.n < 2:
-      x.sd = x.m2 = x.mu = x.n = 0
-    else:
-      d     = v - x.mu
-      x.mu += inc * (d / x.n)
-      x.m2 += inc * (d * (v - x.mu))
-      x.sd  = 0 if x.n < 2 else (max(0,x.m2)/(x.n-1))**.5
+    d     = v - x.mu
+    x.mu += (d / x.n)
+    x.m2 += (d * (v - x.mu))
+    x.sd  = 0 if x.n < 2 else (max(0,x.m2)/(x.n-1))**.5
   elif x.it is Data:
     v =  v if hasattr(v,"it") else Row(v)  
     x.mid = None
-    x.n += inc
-    if inc > 0: x.rows += [v]
-    [add(col, v.cells[col.at], inc) for col in x.cols.all]
+    x.rows += [v]
+    [add(col, v.cells[col.at]) for col in x.cols.all]
+  else: raise TypeError(f"cannot add to {type(x)")
   return v
 
 #--------------------------------------------------------------------
@@ -134,6 +129,43 @@ def disty(data:Data, row:Row) -> float:
 def distysort(data:Data,rows=None) -> List[Row]:
   "Sort rows by distance to best y-values"
   return sorted(rows or data.rows, key=lambda r: disty(data,r))
+
+def distx(data:Data, row1:Row, row2:Row) -> float:
+  "Distance between two rows using x-values"
+  def _aha(col, a,b):
+    if a==b=="?": return 1
+    if col.it is Sym: return a != b
+    a,b = norm(col,a), norm(col,b)
+    a = a if a != "?" else (0 if b>0.5 else 1)
+    b = b if b != "?" else (0 if a>0.5 else 1)
+    return abs(a - b)
+  return dist(_aha(col, row1[col.at], row2[col.at])  
+              for col in data.cols.x)
+
+def distFastmap(data,rows):
+  "Sort rows along a line between 2 distant points."
+  zero, *few = random.choices(rows, k=the.Few)
+  D  = lambda r1,r2:distx(data,r1,r2)
+  lo = max(few, key= lambda r: D(zero,r))
+  hi = max(few, key= lambda r: D(lo,r))
+  c  = D(lo,hi)
+  x  = lambda row: (D(row,lo)**2 +c*c - D(row,hi)**2)/(2*c + 1e-32)
+  return sorted(rows, key=x)
+
+def distClusters(data, rows=None):
+  "Assign rows to clusters using recursive random projections."
+  def worker(rows, cid):
+    n = len(rows) // 2
+    if n > stop:
+      rows = distFastmap(data,rows)
+      return worker(rows[:n], 1 + worker(rows[n:], stop, cid))
+    else:
+      for row in rows: row.cluster = cid
+      return cid
+  rows = shuffle(rows or data.rows)
+  stop = len(rows)**.33
+  worker(rows, 1)
+  return rows
 
 #--------------------------------------------------------------------
 treeOps = {'<=' : lambda x,y: x <= y, 
