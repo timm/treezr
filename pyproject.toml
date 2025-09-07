@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "treezr"
+version = "0.1.0"
+description = "Explainable optimization with compact decision trees (XAI + optimization)"
+readme = { file = "README.md", content-type = "text/markdown" }
+requires-python = ">=3.7"
+license = { text = "MIT" }
+authors = [{ name = "Tim Menzies", email = "timm@ieee.org" }]
+urls = {
+  Homepage = "https://github.com/timm/treezr",
+  Documentation = "https://timm.github.io/treezr/",
+  Repository = "https://github.com/timm/treezr",
+  "License (MIT)" = "https://github.com/timm/treezr/blob/main/LICENSE.md",
+  Issues = "https://github.com/timm/treezr/issues"
+}
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Education"
+]
+dependencies = []
+
+[project.scripts]
+treezr = "treezr.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["treezr*"]
+
