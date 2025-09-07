@@ -6,6 +6,7 @@ code: http://github.com/timm/treezr
 data: http://github.com/timm/moot
    
 Options:
+
     -A  Any=4             on init, how many initial guesses?   
     -B  Budget=30         when growing theory, how many labels?      
     -C  Check=5           budget for checking learned model   
@@ -15,6 +16,7 @@ Options:
     -s  seed=1234567891   random number seed      
     -f  file=../moot/optimize/misc/auto93.csv    data file   
     -h                     show help   
+
 """
 from types import SimpleNamespace as o
 from typing import Any,List,Iterator
