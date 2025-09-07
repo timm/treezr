@@ -192,7 +192,7 @@ def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
     hows = [how for col in data.cols.x 
             if (how := treeCuts(col,data.rows,Y,Klass))]
     if hows:
-      for how1 in min(hows, key=lambda c: c.div).hows:
+      for how1 in min(hows, key=lambda c: c.xpect).hows:
         rows1 = [r for r in data.rows if treeSelects(r, *how1)]
         if the.leaf <= len(rows1) < len(data.rows):
           data.kids += [Tree(clone(data,rows1), Klass, Y, how1)]
@@ -206,9 +206,8 @@ def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> o:
       if (x := row[col.at]) != "?":
         n += 1
         d[x] = d.get(x) or Klass()
-        print(Klass)
         add(d[x], Y(row))
-    return o(div = sum(c.n/n * div(c) for c in d.values()),
+    return o(xpect = sum(c.n/n * div(c) for c in d.values()),
              hows = [("==",col.at,x) for x in d])
 
   def _num(num):
@@ -218,8 +217,8 @@ def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> o:
     for x, y in sorted(xys, key=lambda z: z[0]):
       if x != b4 and the.leaf <= lhs.n <= len(xys) - the.leaf:
         now = (lhs.n * div(lhs) + rhs.n * div(rhs)) / len(xys)
-        if not out or now < out.div:
-          out = o(div=now, hows=[("<=",col.at,b4), (">",col.at,b4)])
+        if not out or now < out.xpect:
+          out = o(xpect=now, hows=[("<=",col.at,b4), (">",col.at,b4)])
       add(lhs, sub(rhs, y))
       b4 = x
     return out
@@ -302,19 +301,26 @@ def _main(settings : o, funs: dict[str,callable]) -> o:
 
 def demo():
   "The usual run"
-  random.seed(the.seed)
+  #random.seed(the.seed)
   data = Data(csv(the.file))
   Y    = lambda row: disty(data,row)
   b4   = adds(Y(row) for row in data.rows)
+  print(b4.mu, b4.sd, b4.lo)
   win  = lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
-  rows = random.choices(data.rows,k=40)
-  print(win(Y(min(rows, key=Y))))
-  ids  = distClusters(data,rows)
-  tree = Tree(clone(data, rows),
-              Y=lambda row: ids[id(row)],
-              Klass=Sym)
-  mid=lambda a: a[len(a)//2]
-  print(sorted([int(win(Y(mid(x.rows)))) for n,x in treeNodes(tree)] ))
+  for b in range(10,200,20):
+    print(".")
+    alls=[]
+    somes=[]
+    for _ in range(50):
+      somes += [int(win(Y(min(random.choices(data.rows,k=b//2),key=Y))))]
+      rows = random.choices(data.rows,k=b)
+      ids  = distClusters(data,rows)
+      tree = Tree(clone(data, rows),
+                Y=lambda row: ids[id(row)],
+                Klass=Sym)
+      mid=lambda a: a[len(a)//2]
+      alls += [max([int(win(Y(mid(x.rows)))) for n,x in treeNodes(tree)])]
+    print(b//2, mid(sorted(somes)), mid(sorted(alls)))
 
 def main():
   "top-level call"
