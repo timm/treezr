@@ -7,15 +7,15 @@ data: http://github.com/timm/moot
    
 Options:
 
-    -A  Any=4             on init, how many initial guesses?   
-    -B  Budget=30         when growing theory, how many labels?      
-    -C  Check=5           budget for checking learned model   
-    -F  Few=64            sample size of data random sampling     
-    -l  leaf=3            min items in tree leaves   
-    -p  p=2               distance coeffecient   
-    -s  seed=1234567891   random number seed      
-    -f  file=../moot/optimize/misc/auto93.csv    data file   
-    -h                     show help   
+      -A  Any=4             on init, how many initial guesses?   
+      -B  Budget=30         when growing theory, how many labels?      
+      -C  Check=5           budget for checking learned model   
+      -F  Few=64            sample size of data random sampling     
+      -l  leaf=3            min items in tree leaves   
+      -p  p=2               distance coeffecient   
+      -s  seed=1234567891   random number seed      
+      -f  file=../moot/optimize/misc/auto93.csv    data file   
+      -h                     show help   
 
 """
 from types import SimpleNamespace as o
