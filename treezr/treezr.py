@@ -162,19 +162,17 @@ def distClusters(data, rows=None):
   "Assign rows to clusters using recursive random projections."
   ids  = {}
   rows = shuffle(rows or data.rows)
-  stop = len(rows)**.5
-  some = {}
+  stop = 2
   def worker(rows, cid):
     n = len(rows) // 2
-    if n > stop:
+    if n >= stop:
       rows = distFastmap(data,rows)
-      for r in [rows[0], rows[n], rows[-1]]: some[id(r)] = r  
       return worker(rows[:n], 1 + worker(rows[n:], cid))
     else:
       for row in rows: ids[id(row)] = cid
       return cid
-  worker(rows, 1)
-  return ids, some
+  worker(rows,1)
+  return ids
 
 #--------------------------------------------------------------------
 treeOps = {'<=' : lambda x,y: x <= y, 
@@ -304,13 +302,19 @@ def _main(settings : o, funs: dict[str,callable]) -> o:
 
 def demo():
   "The usual run"
+  random.seed(the.seed)
   data = Data(csv(the.file))
-  ids, some = distClusters(data)
-  print(div(adds(ids.values(),Sym())))
-  def Y(row): return ids[id(row)]
-  treeShow(Tree(clone(data, some.values()),
-                Y=Y,
-                Klass=Sym))
+  Y    = lambda row: disty(data,row)
+  b4   = adds(Y(row) for row in data.rows)
+  win  = lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
+  rows = random.choices(data.rows,k=40)
+  print(win(Y(min(rows, key=Y))))
+  ids  = distClusters(data,rows)
+  tree = Tree(clone(data, rows),
+              Y=lambda row: ids[id(row)],
+              Klass=Sym)
+  mid=lambda a: a[len(a)//2]
+  print(sorted([int(win(Y(mid(x.rows)))) for n,x in treeNodes(tree)] ))
 
 def main():
   "top-level call"
