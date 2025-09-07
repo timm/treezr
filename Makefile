@@ -27,7 +27,7 @@ push: ## commit to main
 
 sh: ## run custom shell
 	clear; tput setaf 3; cat $(Top)/etc/hi.txt; tput sgr0
-	sh $(Top)/etc/ell
+	sh $(Top)/etc/bash.sh
 
 setup: ## initial setup - clone moot data
 	[ -d $(Data) ] || git clone http://github.com/timm/moot $(Top)/../moot
@@ -39,12 +39,10 @@ clean:  ## find and delete any __pycache__ dirs
 	files="$$(find $(Top) -name __pycache__ -type d)"; \
 	for f in $$files; do rm -rf "$$f"; done
 
-~/tmp/dist.log:  ## run ezrtest on many files
-	$(MAKE) todo=dist files="$(Top)/../moot/optimize/*/*.csv" run | tee $@ 
+~/tmp/dist.log:  ## run on many files
+	$(MAKE) todo=dist files="$(Top)/../moot/optimize/*/*.csv" _run | tee $@ 
 
-run:
+_run:
 	@mkdir -p ~/tmp
 	time ls -r $(files) \
 	  | xargs -P 24 -n 1 -I{} sh -c 'cd $(Top)/treezr; python3 -B treezrtest.py -f "{}" --$(todo)'
-
-
