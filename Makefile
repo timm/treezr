@@ -39,6 +39,12 @@ clean:  ## find and delete any __pycache__ dirs
 	files="$$(find $(Top) -name __pycache__ -type d)"; \
 	for f in $$files; do rm -rf "$$f"; done
 
+docs/index.html: treezr/treezr.py
+	mkdir -p $(Top)/docs
+	touch $(Top)/docs/.nojekyll
+	pdoc3 --html --force -o $(Top)/docs $<
+	mv $(Top)/docs/treezr.html $@
+
 ~/tmp/dist.log:  ## run on many files
 	$(MAKE) todo=dist files="$(Top)/../moot/optimize/*/*.csv" _run | tee $@ 
 

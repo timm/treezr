@@ -1,8 +1,11 @@
 #!/usr/bin/env python3 
 """
 treezr.py: unsupervised tree learning for multi-objective optimization   
-(c) 2025, Tim Menzies <timm@ieee.org>, MIT license   
+(c) 2025, Tim Menzies <timm@ieee.org>, MIT license.    
+code: http://github.com/timm/treezr   
+data: http://github.com/timm/moot
    
+Options:
     -A  Any=4             on init, how many initial guesses?   
     -B  Budget=30         when growing theory, how many labels?   
     -C  Check=5           budget for checking learned model
