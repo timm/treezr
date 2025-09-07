@@ -1,0 +1,739 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1">
+<meta name="generator" content="pdoc3 0.11.6">
+<title>treezr API documentation</title>
+<meta name="description" content="treezr.py: unsupervised tree learning for multi-objective optimization
+(c) 2025, Tim Menzies &lt;timm@ieee.org&gt;, MIT license.
+code: …">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/sanitize.min.css" integrity="sha512-y1dtMcuvtTMJc1yPgEqF0ZjQbhnc/bFhyvIyVNb9Zk5mIGtqVaAB1Ttl28su8AvFMOY0EwRbAe+HCLqj6W7/KA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/13.0.0/typography.min.css" integrity="sha512-Y1DYSb995BAfxobCkKepB1BqJJTPrOp3zPL74AWFugHHmmdcvO+C48WLrUOlhGMc0QG7AE3f7gmvvcrmX2fDoA==" crossorigin>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/default.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:1.5em;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:2em 0 .50em 0}h3{font-size:1.4em;margin:1.6em 0 .7em 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .2s ease-in-out}a:visited{color:#503}a:hover{color:#b62}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900;font-weight:bold}pre code{font-size:.8em;line-height:1.4em;padding:1em;display:block}code{background:#f3f3f3;font-family:"DejaVu Sans Mono",monospace;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source > summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible;min-width:max-content}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em 1em;margin:1em 0}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul ul{padding-left:1em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" integrity="sha512-D9gUyxqja7hBtkWpPWGt9wfbfaMGVt9gnyCvYa+jojwwPHLCzUm5i8rpk7vD7wNee9bA35eYIjobYPaQuKS1MQ==" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => {
+hljs.configure({languages: ['bash', 'css', 'diff', 'graphql', 'ini', 'javascript', 'json', 'plaintext', 'python', 'python-repl', 'rust', 'shell', 'sql', 'typescript', 'xml', 'yaml']});
+hljs.highlightAll();
+/* Collapse source docstrings */
+setTimeout(() => {
+[...document.querySelectorAll('.hljs.language-python > .hljs-string')]
+.filter(el => el.innerHTML.length > 200 && ['"""', "'''"].includes(el.innerHTML.substring(0, 3)))
+.forEach(el => {
+let d = document.createElement('details');
+d.classList.add('hljs-string');
+d.innerHTML = '<summary>"""</summary>' + el.innerHTML.substring(3);
+el.replaceWith(d);
+});
+}, 100);
+})</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>treezr</code></h1>
+</header>
+<section id="section-intro">
+<p>treezr.py: unsupervised tree learning for multi-objective optimization <br>
+(c) 2025, Tim Menzies <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#116;&#105;&#109;&#109;&#64;&#105;&#101;&#101;&#101;&#46;&#111;&#114;&#103;">&#116;&#105;&#109;&#109;&#64;&#105;&#101;&#101;&#101;&#46;&#111;&#114;&#103;</a>, MIT license.
+<br>
+code: <a href="http://github.com/timm/treezr">http://github.com/timm/treezr</a> <br>
+data: <a href="http://github.com/timm/moot">http://github.com/timm/moot</a></p>
+<h2 id="options">Options</h2>
+<p>-A
+Any=4
+on init, how many initial guesses? <br>
+-B
+Budget=30
+when growing theory, how many labels? <br>
+-C
+Check=5
+budget for checking learned model
+-F
+Few=64
+sample size of data random sampling<br>
+-l
+leaf=3
+min items in tree leaves
+-p
+p=2
+distance coeffecient
+-s
+seed=1234567891
+random number seed <br>
+-f
+file=../moot/optimize/misc/auto93.csv
+data file
+-h
+show help</p>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="treezr.Cols"><code class="name flex">
+<span>def <span class="ident">Cols</span></span>(<span>names: List[str]) ‑> types.SimpleNamespace</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def Cols(names : List[str]) -&gt; o:
+  &#34;Create column summaries from column names&#34;
+  all=[(Num if s[0].isupper() else Sym)(c,s) for c,s in enumerate(names)]
+  klass=None
+  for col in all: 
+    if col.txt[-1]==&#34;!&#34;: klass=col
+  return o(it=Cols, names = names, all = all, klass = klass,
+           x = [col for col in all if col.txt[-1] not in &#34;X-+&#34;],
+           y = [col for col in all if col.txt[-1] in &#34;-+&#34;])</code></pre>
+</details>
+<div class="desc"><p>Create column summaries from column names</p></div>
+</dd>
+<dt id="treezr.Data"><code class="name flex">
+<span>def <span class="ident">Data</span></span>(<span>src) ‑> types.SimpleNamespace</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def Data(src) -&gt; o:
+  &#34;Create data structure from source rows&#34;
+  src = iter(src)
+  return adds(src, o(it=Data, n=0, mid=None, rows=[], kids=[], ys=None,
+                     cols=Cols(next(src)))) # kids=[], how=[], ys=None))</code></pre>
+</details>
+<div class="desc"><p>Create data structure from source rows</p></div>
+</dd>
+<dt id="treezr.Num"><code class="name flex">
+<span>def <span class="ident">Num</span></span>(<span>at=0, s=' ') ‑> types.SimpleNamespace</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def Num(at=0,s=&#34; &#34;) -&gt; o: 
+  &#34;Create a numeric column summarizer&#34;
+  return o(it=Num, at=at, txt=s, n=0, mu=0, m2=0, sd=0, 
+           hi=-big, lo=big, more = 0 if s[-1] == &#34;-&#34; else 1)</code></pre>
+</details>
+<div class="desc"><p>Create a numeric column summarizer</p></div>
+</dd>
+<dt id="treezr.Sym"><code class="name flex">
+<span>def <span class="ident">Sym</span></span>(<span>at=0, s=' ') ‑> types.SimpleNamespace</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def Sym(at=0,s=&#34; &#34;) -&gt; o: 
+  &#34;Create a symbolic column summarizer&#34;
+  return o(it=Sym, at=at, txt=s, n=0, most=0, mode=None, has={})</code></pre>
+</details>
+<div class="desc"><p>Create a symbolic column summarizer</p></div>
+</dd>
+<dt id="treezr.Tree"><code class="name flex">
+<span>def <span class="ident">Tree</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>,<br>Klass=&lt;function Num&gt;,<br>Y=None,<br>how=None) ‑> <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0></span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def Tree(data:Data, Klass=Num, Y=None, how=None) -&gt; Data:
+  &#34;Create regression tree.&#34;
+  Y = Y or (lambda row: disty(data, row))
+  data.kids, data.how = [], how
+  data.ys = adds(Y(row) for row in data.rows)
+  if len(data.rows) &gt;= the.leaf:
+    hows = [how for col in data.cols.x 
+            if (how := treeCuts(col,data.rows,Y,Klass))]
+    if hows:
+      for how1 in min(hows, key=lambda c: c.xpect).hows:
+        rows1 = [r for r in data.rows if treeSelects(r, *how1)]
+        if the.leaf &lt;= len(rows1) &lt; len(data.rows):
+          data.kids += [Tree(clone(data,rows1), Klass, Y, how1)]
+  return data</code></pre>
+</details>
+<div class="desc"><p>Create regression tree.</p></div>
+</dd>
+<dt id="treezr.add"><code class="name flex">
+<span>def <span class="ident">add</span></span>(<span>x: types.SimpleNamespace, v: Any, inc=1, zap=False) ‑> Any</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def add(x: o, v:Any, inc=1, zap=False) -&gt; Any:
+  &#34;incrementally update Syms,Nums or Datas&#34;
+  if v == &#34;?&#34;: return v
+  x.n += inc
+  if x.it is Sym: 
+    tmp = x.has[v] = inc + x.has.get(v,0)
+    if tmp &gt; x.most:
+      x.most, x.mode = v, tmp
+  elif x.it is Num:
+    x.lo, x.hi = min(v, x.lo), max(v, x.hi)
+    if inc &lt; 0 and x.n &lt; 2:
+      x.sd = x.m2 = x.mu = x.n = 0
+    else:
+      d     = v - x.mu
+      x.mu += inc * (d / x.n)
+      x.m2 += inc * (d * (v - x.mu))
+      x.sd  = 0 if x.n &lt; 2 else (max(0,x.m2)/(x.n-1))**.5
+  elif x.it is Data:
+    x.mid = None
+    if inc &gt; 0: x.rows += [v]
+    elif zap: x.rows.remove(v) # slow for long rows
+    [add(col, v[col.at], inc) for col in x.cols.all]
+  else: 
+    raise TyoeError(&#34;cannot add to {type(x)}&#34;)
+  return v</code></pre>
+</details>
+<div class="desc"><p>incrementally update Syms,Nums or Datas</p></div>
+</dd>
+<dt id="treezr.adds"><code class="name flex">
+<span>def <span class="ident">adds</span></span>(<span>src, it=None) ‑> types.SimpleNamespace</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def adds(src, it=None) -&gt; o:
+  &#34;Add multiple items to a summarizer&#34;
+  it = it or Num()
+  [add(it,x) for x in src]
+  return it</code></pre>
+</details>
+<div class="desc"><p>Add multiple items to a summarizer</p></div>
+</dd>
+<dt id="treezr.cdf"><code class="name flex">
+<span>def <span class="ident">cdf</span></span>(<span>x, mu, sd)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def cdf(x,mu,sd):
+  def cdf1(z): return 1 - 0.5*2.718**(-0.717*z - 0.416*z*z)
+  z = (x - mu) / sd
+  return cdf1(z) if z &gt;= 0 else 1 - cdf1(-z)</code></pre>
+</details>
+<div class="desc"></div>
+</dd>
+<dt id="treezr.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>,<br>rows=None) ‑> types.SimpleNamespace</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def clone(data:Data, rows=None) -&gt; o:
+  &#34;Create new Data with same columns but different rows&#34;
+  return adds(rows or [], Data([data.cols.names]))</code></pre>
+</details>
+<div class="desc"><p>Create new Data with same columns but different rows</p></div>
+</dd>
+<dt id="treezr.coerce"><code class="name flex">
+<span>def <span class="ident">coerce</span></span>(<span>s: str) ‑> int | float | str | bool</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def coerce(s:str) -&gt; Atom:
+  &#34;coerce a string to int, float, bool, or trimmed string&#34;
+  for fn in [int,float]:
+    try: return fn(s)
+    except Exception as _: pass
+  s = s.strip()
+  return {&#39;True&#39;:True,&#39;False&#39;:False}.get(s,s)</code></pre>
+</details>
+<div class="desc"><p>coerce a string to int, float, bool, or trimmed string</p></div>
+</dd>
+<dt id="treezr.csv"><code class="name flex">
+<span>def <span class="ident">csv</span></span>(<span>file: str) ‑> Iterator[List[int | float | str | bool]]</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def csv(file: str ) -&gt; Iterator[Row]:
+  &#34;Returns rows of a csv file.&#34;
+  with open(file,encoding=&#34;utf-8&#34;) as f:
+    for line in f:
+      if (line := line.split(&#34;%&#34;)[0]):
+        yield [coerce(s) for s in line.split(&#34;,&#34;)]</code></pre>
+</details>
+<div class="desc"><p>Returns rows of a csv file.</p></div>
+</dd>
+<dt id="treezr.demo"><code class="name flex">
+<span>def <span class="ident">demo</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def demo():
+  &#34;The usual run&#34;
+  #random.seed(the.seed)
+  data = Data(csv(the.file))
+  Y    = lambda row: disty(data,row)
+  b4   = adds(Y(row) for row in data.rows)
+  print(b4.mu, b4.sd, b4.lo)
+  win  = lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
+  for b in range(10,200,20):
+    print(&#34;.&#34;)
+    alls=[]
+    somes=[]
+    for _ in range(50):
+      somes += [int(win(Y(min(random.choices(data.rows,k=b//2),key=Y))))]
+      rows = random.choices(data.rows,k=b)
+      ids  = distClusters(data,rows)
+      tree = Tree(clone(data, rows),
+                Y=lambda row: ids[id(row)],
+                Klass=Sym)
+      mid=lambda a: a[len(a)//2]
+      alls += [max([int(win(Y(mid(x.rows)))) for n,x in treeNodes(tree)])]
+    print(b//2, mid(sorted(somes)), mid(sorted(alls)))</code></pre>
+</details>
+<div class="desc"><p>The usual run</p></div>
+</dd>
+<dt id="treezr.dist"><code class="name flex">
+<span>def <span class="ident">dist</span></span>(<span>src) ‑> float</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def dist(src) -&gt; float:
+  &#34;Calculate Minkowski distance&#34;
+  d,n = 0,0
+  for v in src: n,d = n+1, d + v**the.p;
+  return (d/n) ** (1/the.p)</code></pre>
+</details>
+<div class="desc"><p>Calculate Minkowski distance</p></div>
+</dd>
+<dt id="treezr.distClusters"><code class="name flex">
+<span>def <span class="ident">distClusters</span></span>(<span>data, rows=None)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def distClusters(data, rows=None):
+  &#34;Assign rows to clusters using recursive random projections.&#34;
+  ids  = {}
+  rows = shuffle(rows or data.rows)
+  stop = 2
+  def worker(rows, cid):
+    n = len(rows) // 2
+    if n &gt;= stop:
+      rows = distFastmap(data,rows)
+      return worker(rows[:n], 1 + worker(rows[n:], cid))
+    else:
+      for row in rows: ids[id(row)] = cid
+      return cid
+  worker(rows,1)
+  return ids</code></pre>
+</details>
+<div class="desc"><p>Assign rows to clusters using recursive random projections.</p></div>
+</dd>
+<dt id="treezr.distFastmap"><code class="name flex">
+<span>def <span class="ident">distFastmap</span></span>(<span>data, rows)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def distFastmap(data,rows):
+  &#34;Sort rows along a line between 2 distant points.&#34;
+  zero, *few = random.choices(rows, k=the.Few)
+  D  = lambda r1,r2:distx(data,r1,r2)
+  lo = max(few, key= lambda r: D(zero,r))
+  hi = max(few, key= lambda r: D(lo,r))
+  c  = D(lo,hi)
+  x  = lambda row: (D(row,lo)**2 +c*c - D(row,hi)**2)/(2*c + 1e-32)
+  return sorted(rows, key=x)</code></pre>
+</details>
+<div class="desc"><p>Sort rows along a line between 2 distant points.</p></div>
+</dd>
+<dt id="treezr.distx"><code class="name flex">
+<span>def <span class="ident">distx</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>,<br>row1: List[int | float | str | bool],<br>row2: List[int | float | str | bool]) ‑> float</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def distx(data:Data, row1:Row, row2:Row) -&gt; float:
+  &#34;Distance between two rows using x-values&#34;
+  def _aha(col, a,b):
+    if a==b==&#34;?&#34;: return 1
+    if col.it is Sym: return a != b
+    a,b = norm(col,a), norm(col,b)
+    a = a if a != &#34;?&#34; else (0 if b&gt;0.5 else 1)
+    b = b if b != &#34;?&#34; else (0 if a&gt;0.5 else 1)
+    return abs(a - b)
+  return dist(_aha(col, row1[col.at], row2[col.at])  
+              for col in data.cols.x)</code></pre>
+</details>
+<div class="desc"><p>Distance between two rows using x-values</p></div>
+</dd>
+<dt id="treezr.disty"><code class="name flex">
+<span>def <span class="ident">disty</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>,<br>row: List[int | float | str | bool]) ‑> float</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def disty(data:Data, row:Row) -&gt; float:
+  &#34;Distance from row to best y-values&#34;
+  return dist(abs(norm(c, row[c.at]) - c.more) for c in data.cols.y)</code></pre>
+</details>
+<div class="desc"><p>Distance from row to best y-values</p></div>
+</dd>
+<dt id="treezr.distysort"><code class="name flex">
+<span>def <span class="ident">distysort</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>,<br>rows=None) ‑> List[List[int | float | str | bool]]</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def distysort(data:Data,rows=None) -&gt; List[Row]:
+  &#34;Sort rows by distance to best y-values&#34;
+  return sorted(rows or data.rows, key=lambda r: disty(data,r))</code></pre>
+</details>
+<div class="desc"><p>Sort rows by distance to best y-values</p></div>
+</dd>
+<dt id="treezr.div"><code class="name flex">
+<span>def <span class="ident">div</span></span>(<span>col: types.SimpleNamespace) ‑> float</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def div(col:o) -&gt; float:
+  &#34;Return the central tendnacy for one column.&#34;
+  if col.it is Num: return col.sd
+  return -sum(p*math.log(p,2) for n in col.has.values() if (p:=n/col.n) &gt; 0)</code></pre>
+</details>
+<div class="desc"><p>Return the central tendnacy for one column.</p></div>
+</dd>
+<dt id="treezr.divs"><code class="name flex">
+<span>def <span class="ident">divs</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>) ‑> float</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def divs(data:Data) -&gt; float:
+  &#34;Return the central tendency for each column.&#34;
+  return [div(col) for col in data.cols.all]</code></pre>
+</details>
+<div class="desc"><p>Return the central tendency for each column.</p></div>
+</dd>
+<dt id="treezr.fyi"><code class="name flex">
+<span>def <span class="ident">fyi</span></span>(<span>s, end='')</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fyi(s, end=&#34;&#34;):
+  &#34;write the standard error (defaults to no new line)&#34;
+  print(s, file=sys.stderr, flush=True, end=end)</code></pre>
+</details>
+<div class="desc"><p>write the standard error (defaults to no new line)</p></div>
+</dd>
+<dt id="treezr.label"><code class="name flex">
+<span>def <span class="ident">label</span></span>(<span>row)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def label(row): 
+  &#34;Stub. Ensure a row is labelled.&#34;
+  return row</code></pre>
+</details>
+<div class="desc"><p>Stub. Ensure a row is labelled.</p></div>
+</dd>
+<dt id="treezr.main"><code class="name flex">
+<span>def <span class="ident">main</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def main():
+  &#34;top-level call&#34;
+  _main(the,globals()); demo()</code></pre>
+</details>
+<div class="desc"><p>top-level call</p></div>
+</dd>
+<dt id="treezr.mid"><code class="name flex">
+<span>def <span class="ident">mid</span></span>(<span>col: types.SimpleNamespace) ‑> int | float | str | bool</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def mid(col: o) -&gt; Atom:
+  &#34;Get central tendency of one column&#34;
+  return max(col.has, key=col.has.get) if col.it is Sym else col.mu</code></pre>
+</details>
+<div class="desc"><p>Get central tendency of one column</p></div>
+</dd>
+<dt id="treezr.mids"><code class="name flex">
+<span>def <span class="ident">mids</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>) ‑> List[int | float | str | bool]</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def mids(data: Data) -&gt; Row:
+  &#34;Get central tendencies of all columns&#34;
+  data.mid = data.mid or [mid(col) for col in data.cols.all]
+  return data.mid</code></pre>
+</details>
+<div class="desc"><p>Get central tendencies of all columns</p></div>
+</dd>
+<dt id="treezr.norm"><code class="name flex">
+<span>def <span class="ident">norm</span></span>(<span>num: <function <a title="treezr.Num" href="#treezr.Num">Num()</a> at 0x101fcbce0>,<br>v: float) ‑> float</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def norm(num:Num, v:float) -&gt; float:  
+  &#34;Normalize a value to 0..1 range&#34;
+  return  v if v==&#34;?&#34; else (v - num.lo) / (num.hi - num.lo + 1E-32)</code></pre>
+</details>
+<div class="desc"><p>Normalize a value to 0..1 range</p></div>
+</dd>
+<dt id="treezr.shuffle"><code class="name flex">
+<span>def <span class="ident">shuffle</span></span>(<span>lst: List) ‑> List</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def shuffle(lst:List) -&gt; List:
+  &#34;shuffle a list, in place&#34;
+  random.shuffle(lst); return lst</code></pre>
+</details>
+<div class="desc"><p>shuffle a list, in place</p></div>
+</dd>
+<dt id="treezr.sub"><code class="name flex">
+<span>def <span class="ident">sub</span></span>(<span>x: types.SimpleNamespace, v: Any, zap=False) ‑> Any</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def sub(x:o, v:Any, zap=False) -&gt; Any: 
+  &#34;Remove value from summarizer&#34;
+  return add(x,v,-1,zap)</code></pre>
+</details>
+<div class="desc"><p>Remove value from summarizer</p></div>
+</dd>
+<dt id="treezr.treeCuts"><code class="name flex">
+<span>def <span class="ident">treeCuts</span></span>(<span>col: types.SimpleNamespace,<br>rows: list[typing.List[int | float | str | bool]],<br>Y: <built-in function callable>,<br>Klass: <built-in function callable>) ‑> types.SimpleNamespace</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -&gt; o:
+  &#34;Divide a col into ranges.&#34;
+  def _sym(sym):
+    d, n = {}, 0
+    for row in rows:
+      if (x := row[col.at]) != &#34;?&#34;:
+        n += 1
+        d[x] = d.get(x) or Klass()
+        add(d[x], Y(row))
+    return o(xpect = sum(c.n/n * div(c) for c in d.values()),
+             hows = [(&#34;==&#34;,col.at,x) for x in d])
+
+  def _num(num):
+    out, b4, lhs, rhs = None, None, Klass(), Klass()
+    xys = [(row[col.at], add(rhs, Y(row))) # add returns the &#34;y&#34; value
+           for row in rows if row[col.at] != &#34;?&#34;]
+    for x, y in sorted(xys, key=lambda z: z[0]):
+      if x != b4 and the.leaf &lt;= lhs.n &lt;= len(xys) - the.leaf:
+        now = (lhs.n * div(lhs) + rhs.n * div(rhs)) / len(xys)
+        if not out or now &lt; out.xpect:
+          out = o(xpect=now, hows=[(&#34;&lt;=&#34;,col.at,b4), (&#34;&gt;&#34;,col.at,b4)])
+      add(lhs, sub(rhs, y))
+      b4 = x
+    return out
+
+  return (_sym if col.it is Sym else _num)(col)</code></pre>
+</details>
+<div class="desc"><p>Divide a col into ranges.</p></div>
+</dd>
+<dt id="treezr.treeLeaf"><code class="name flex">
+<span>def <span class="ident">treeLeaf</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>,<br>row: List[int | float | str | bool],<br>lvl=0) ‑> <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0></span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def treeLeaf(data:Data, row:Row, lvl=0) -&gt; Data:
+  &#34;Select a matching leaf&#34;
+  for j in data.kids:
+    if treeSelects(row, *j.how): return treeLeaf(j,row,lvl+1)
+  return data</code></pre>
+</details>
+<div class="desc"><p>Select a matching leaf</p></div>
+</dd>
+<dt id="treezr.treeNodes"><code class="name flex">
+<span>def <span class="ident">treeNodes</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>,<br>lvl=0,<br>key=None) ‑> <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0></span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def treeNodes(data:Data, lvl=0, key=None) -&gt; Data:
+  &#34;iterate over all treeNodes&#34;
+  yield lvl, data
+  for j in sorted(data.kids, key=key) if key else data.kids:
+    yield from treeNodes(j,lvl + 1, key)</code></pre>
+</details>
+<div class="desc"><p>iterate over all treeNodes</p></div>
+</dd>
+<dt id="treezr.treeSelects"><code class="name flex">
+<span>def <span class="ident">treeSelects</span></span>(<span>row: List[int | float | str | bool],<br>op: str,<br>at: int,<br>y: int | float | str | bool) ‑> bool</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def treeSelects(row:Row, op:str, at:int, y:Atom) -&gt; bool: 
+  &#34;Have we selected this row?&#34;
+  return (x := row[at]) == &#34;?&#34; or treeOps[op](x, y)</code></pre>
+</details>
+<div class="desc"><p>Have we selected this row?</p></div>
+</dd>
+<dt id="treezr.treeShow"><code class="name flex">
+<span>def <span class="ident">treeShow</span></span>(<span>data: <function <a title="treezr.Data" href="#treezr.Data">Data()</a> at 0x101fdc0e0>,<br>key=&lt;function &lt;lambda&gt;&gt;) ‑> None</span>
+</code></dt>
+<dd>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def treeShow(data:Data, key=lambda d: d.ys.mu) -&gt; None:
+  &#34;Display tree with rows and win columns&#34;
+  ats = {}
+  print(f&#34;{&#39;#rows&#39;:&gt;6} {&#39;win&#39;:&gt;4}&#34;)
+  for lvl, d in treeNodes(data, key=key): #\n{100}#
+    if lvl == 0: continue
+    op, at, y = d.how
+    name = data.cols.names[at]
+    indent = &#39;|  &#39; * (lvl - 1)
+    expl = f&#34;if {name} {op} {y}&#34;
+    score = int(100 * (1 - (d.ys.mu - data.ys.lo) /
+             (data.ys.mu - data.ys.lo + 1e-32)))
+    leaf = &#34;;&#34; if not d.kids else &#34;&#34;
+    print(f&#34;{d.ys.n:6} {score:4}    {indent}{expl}{leaf}&#34;)
+    ats[at] = 1
+  used = [data.cols.names[at] for at in sorted(ats)]
+  print(len(data.cols.x), len(used), &#39;, &#39;.join(used))</code></pre>
+</details>
+<div class="desc"><p>Display tree with rows and win columns</p></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="two-column">
+<li><code><a title="treezr.Cols" href="#treezr.Cols">Cols</a></code></li>
+<li><code><a title="treezr.Data" href="#treezr.Data">Data</a></code></li>
+<li><code><a title="treezr.Num" href="#treezr.Num">Num</a></code></li>
+<li><code><a title="treezr.Sym" href="#treezr.Sym">Sym</a></code></li>
+<li><code><a title="treezr.Tree" href="#treezr.Tree">Tree</a></code></li>
+<li><code><a title="treezr.add" href="#treezr.add">add</a></code></li>
+<li><code><a title="treezr.adds" href="#treezr.adds">adds</a></code></li>
+<li><code><a title="treezr.cdf" href="#treezr.cdf">cdf</a></code></li>
+<li><code><a title="treezr.clone" href="#treezr.clone">clone</a></code></li>
+<li><code><a title="treezr.coerce" href="#treezr.coerce">coerce</a></code></li>
+<li><code><a title="treezr.csv" href="#treezr.csv">csv</a></code></li>
+<li><code><a title="treezr.demo" href="#treezr.demo">demo</a></code></li>
+<li><code><a title="treezr.dist" href="#treezr.dist">dist</a></code></li>
+<li><code><a title="treezr.distClusters" href="#treezr.distClusters">distClusters</a></code></li>
+<li><code><a title="treezr.distFastmap" href="#treezr.distFastmap">distFastmap</a></code></li>
+<li><code><a title="treezr.distx" href="#treezr.distx">distx</a></code></li>
+<li><code><a title="treezr.disty" href="#treezr.disty">disty</a></code></li>
+<li><code><a title="treezr.distysort" href="#treezr.distysort">distysort</a></code></li>
+<li><code><a title="treezr.div" href="#treezr.div">div</a></code></li>
+<li><code><a title="treezr.divs" href="#treezr.divs">divs</a></code></li>
+<li><code><a title="treezr.fyi" href="#treezr.fyi">fyi</a></code></li>
+<li><code><a title="treezr.label" href="#treezr.label">label</a></code></li>
+<li><code><a title="treezr.main" href="#treezr.main">main</a></code></li>
+<li><code><a title="treezr.mid" href="#treezr.mid">mid</a></code></li>
+<li><code><a title="treezr.mids" href="#treezr.mids">mids</a></code></li>
+<li><code><a title="treezr.norm" href="#treezr.norm">norm</a></code></li>
+<li><code><a title="treezr.shuffle" href="#treezr.shuffle">shuffle</a></code></li>
+<li><code><a title="treezr.sub" href="#treezr.sub">sub</a></code></li>
+<li><code><a title="treezr.treeCuts" href="#treezr.treeCuts">treeCuts</a></code></li>
+<li><code><a title="treezr.treeLeaf" href="#treezr.treeLeaf">treeLeaf</a></code></li>
+<li><code><a title="treezr.treeNodes" href="#treezr.treeNodes">treeNodes</a></code></li>
+<li><code><a title="treezr.treeSelects" href="#treezr.treeSelects">treeSelects</a></code></li>
+<li><code><a title="treezr.treeShow" href="#treezr.treeShow">treeShow</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.11.6</a>.</p>
+</footer>
+</body>
+</html>
