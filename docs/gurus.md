@@ -1,0 +1,7 @@
+- random number seed (set it)
+- type hints
+- error handlers
+- do the docs
+- reqx tricks
+- layered architectures (csv). abstraction.
+- iterators, generators
