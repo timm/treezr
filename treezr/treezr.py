@@ -43,7 +43,7 @@ def Num(at=0,s=" ") -> o:
 
 def Sym(at=0,s=" ") -> o: 
   "Create a symbolic column summarizer"
-  return o(it=Sym, at=at, txt=s, n=0, most=0, mode=None, has={})
+  return o(it=Sym, at=at, txt=s, n=0, has={})
 
 def Cols(names : List[str]) -> o:
   "Create column summaries from column names"
@@ -80,10 +80,7 @@ def add(x: o, v:Any, inc=1, zap=False) -> Any:
   "incrementally update Syms,Nums or Datas"
   if v == "?": return v
   x.n += inc
-  if x.it is Sym: 
-    tmp = x.has[v] = inc + x.has.get(v,0)
-    if tmp > x.most:
-      x.most, x.mode = v, tmp
+  if   x.it is Sym: tmp = x.has[v] = inc + x.has.get(v,0)
   elif x.it is Num:
     x.lo, x.hi = min(v, x.lo), max(v, x.hi)
     if inc < 0 and x.n < 2:
@@ -98,8 +95,7 @@ def add(x: o, v:Any, inc=1, zap=False) -> Any:
     if inc > 0: x.rows += [v]
     elif zap: x.rows.remove(v) # slow for long rows
     [add(col, v[col.at], inc) for col in x.cols.all]
-  else: 
-    raise TyoeError("cannot add to {type(x)}")
+  else: raise TypeError(f"cannot add to {type(x)}")
   return v
 
 
