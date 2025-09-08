@@ -300,27 +300,29 @@ def _main(settings : o, funs: dict[str,callable]) -> o:
         if s=="-"+key[0]: 
           settings.__dict__[key] = coerce(sys.argv[n+1])
 
+def dataDwin(file=None):
+  data = Data(csv(file or the.file))
+  D    = lambda row: disty(data,row)
+  b4   = adds(D(row) for row in data.rows)
+  return data, D, lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
+  
 def demo():
   "The usual run"
-  #random.seed(the.seed)
-  data = Data(csv(the.file))
-  Y    = lambda row: disty(data,row)
-  b4   = adds(Y(row) for row in data.rows)
-  print(b4.mu, b4.sd, b4.lo)
-  win  = lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
+  random.seed(the.seed)
+  data,D,win = dataDwin(the.file)
   for b in range(10,200,20):
     print(".")
     alls=[]
     somes=[]
     for _ in range(50):
-      somes += [int(win(Y(min(random.choices(data.rows,k=b//2),key=Y))))]
+      somes += [int(win(D(min(random.choices(data.rows,k=b//2),key=D))))]
       rows = random.choices(data.rows,k=b)
       ids  = distClusters(data,rows)
       tree = Tree(clone(data, rows),
                 Y=lambda row: ids[id(row)],
                 Klass=Sym)
       mid=lambda a: a[len(a)//2]
-      alls += [max([int(win(Y(mid(x.rows)))) for n,x in treeNodes(tree)])]
+      alls += [max([int(win(D(mid(x.rows)))) for n,x in treeNodes(tree)])]
     print(b//2, mid(sorted(somes)), mid(sorted(alls)))
 
 def main():
