@@ -43,7 +43,7 @@ def Num(at=0,s=" ") -> o:
 
 # Create a symbolic column summarizer.
 def Sym(at=0,s=" ") -> o: 
-  return o(it=Sym, at=at, txt=s, n=0, most=0, mode=None, has={})
+  return o(it=Sym, at=at, txt=s, n=0, has={})
 
 # Create column summaries from column names.
 def Cols(names : List[str]) -> o:
@@ -80,10 +80,7 @@ def sub(x:o, v:Any, zap=False) -> Any:
 def add(x: o, v:Any, inc=1, zap=False) -> Any:
   if v == "?": return v
   x.n += inc
-  if x.it is Sym: 
-    tmp = x.has[v] = inc + x.has.get(v,0)
-    if tmp > x.most:
-      x.most, x.mode = v, tmp
+  if   x.it is Sym: tmp = x.has[v] = inc + x.has.get(v,0)
   elif x.it is Num:
     x.lo, x.hi = min(v, x.lo), max(v, x.hi)
     if inc < 0 and x.n < 2:
@@ -98,8 +95,7 @@ def add(x: o, v:Any, inc=1, zap=False) -> Any:
     if inc > 0: x.rows += [v]
     elif zap: x.rows.remove(v) # slow for long rows
     [add(col, v[col.at], inc) for col in x.cols.all]
-  else: 
-    raise TyoeError("cannot add to {type(x)}")
+  else: raise TypeError(f"cannot add to {type(x)}")
   return v
 
 
@@ -304,27 +300,29 @@ def _main(settings : o, funs: dict[str,callable]) -> o:
         if s=="-"+key[0]: 
           settings.__dict__[key] = coerce(sys.argv[n+1])
 
+def dataDwin(file=None):
+  data = Data(csv(file or the.file))
+  D    = lambda row: disty(data,row)
+  b4   = adds(D(row) for row in data.rows)
+  return data, D, lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
+  
 # The usual run.
 def demo():
-  #random.seed(the.seed)
-  data = Data(csv(the.file))
-  Y    = lambda row: disty(data,row)
-  b4   = adds(Y(row) for row in data.rows)
-  print(b4.mu, b4.sd, b4.lo)
-  win  = lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
+  random.seed(the.seed)
+  data,D,win = dataDwin(the.file)
   for b in range(10,200,20):
     print(".")
     alls=[]
     somes=[]
     for _ in range(50):
-      somes += [int(win(Y(min(random.choices(data.rows,k=b//2),key=Y))))]
+      somes += [int(win(D(min(random.choices(data.rows,k=b//2),key=D))))]
       rows = random.choices(data.rows,k=b)
       ids  = distClusters(data,rows)
       tree = Tree(clone(data, rows),
                 Y=lambda row: ids[id(row)],
                 Klass=Sym)
       mid=lambda a: a[len(a)//2]
-      alls += [max([int(win(Y(mid(x.rows)))) for n,x in treeNodes(tree)])]
+      alls += [max([int(win(D(mid(x.rows)))) for n,x in treeNodes(tree)])]
     print(b//2, mid(sorted(somes)), mid(sorted(alls)))
 
 # top-level call.

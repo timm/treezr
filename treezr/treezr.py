@@ -3,8 +3,7 @@
 treezr.py: unsupervised tree learning for multi-objective optimization   
 (c) 2025, Tim Menzies <timm@ieee.org>, MIT license.    
 code: http://github.com/timm/treezr   
-data: http://github.com/timm/moot
-   
+data: http://github.com/timm/moot  
 Options:
 
       -A  Any=4             on init, how many initial guesses?   
@@ -80,7 +79,7 @@ def add(x: o, v:Any, inc=1, zap=False) -> Any:
   "incrementally update Syms,Nums or Datas"
   if v == "?": return v
   x.n += inc
-  if   x.it is Sym: tmp = x.has[v] = inc + x.has.get(v,0)
+  if   x.it is Sym: x.has[v] = inc + x.has.get(v,0)
   elif x.it is Num:
     x.lo, x.hi = min(v, x.lo), max(v, x.hi)
     if inc < 0 and x.n < 2:

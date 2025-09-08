@@ -20,7 +20,7 @@ help: ## show help.
 pull: ## update from main
 	git pull
 
-push: ## commit to main
+push:  $(Top)/docs/index.html ## commit to main
 	echo -en "$(LOUD)Why this push? $(SOFT)" 
 	read x ; git commit -am "$$x" ;  git push
 	git status
