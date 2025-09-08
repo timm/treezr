@@ -45,6 +45,14 @@ docs/index.html: treezr/treezr.py
 	pdoc3 --html --force -o $(Top)/docs $<
 	mv $(Top)/docs/treezr.html $@
 
+docs/%.html: treezr/%.py
+	mkdir -p $(Top)/docs; 
+	touch $(Top)/docs/.nojekyll; 
+	python3 -B $(Top)/etc/prep.py $^ > $(Top)/docs/$*.py 
+	cd $(Top)/docs; pycco -d $(Top)/docs $*.py
+	echo "p {text-align: right;}" >> $(Top)/docs/pycco.css
+	echo "pre {font-size: x-small;}" >> $(Top)/docs/pycco.css
+
 ~/tmp/dist.log:  ## run on many files
 	$(MAKE) todo=dist files="$(Top)/../moot/optimize/*/*.csv" _run | tee $@ 
 
