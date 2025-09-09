@@ -34,6 +34,12 @@ def Cols(names : List[str]) -> o:
     x = {c:all[n] for c,s in enumerate(names) if s[-1] not in "X-+"]},
     y = {c:all[n] for c,s in enumerate(names) if s[-1] in "-+"]})
 
+def adds(src, col=None):
+  for x in src:
+    col = col or (Sym if type(x) is str else Num)()
+    add(col,x)
+  return col
+
 def add(col,x):
   if x != "?": 
     if type(col) is Num: col.append(x)
@@ -77,20 +83,37 @@ def projectToLine(data,rows):
   x  = lambda row: (D(row,lo)**2 +c*c - D(row,hi)**2)/(2*c + 1e-32)
   return sorted(rows, key=x)
 
-def cut(rows):
-  n = len(rows)//2; return rows[:n], rows[n:]
+def cut1(rows): return len(rows)//2
 
-def cluster(data, rows=None, stop=4, cut=cut):
+def cut2(ids):
+  def fn(rows):
+    N         = len(rows)
+    out,e,eps = None, 1e32, N**.5
+    Y         = lambda row: ids[id(row)]
+    l,r       = Sym(), adds([Y(row) for row in rows], Sym())
+    for n,row in enumerate(rows):
+      r[Y(row)] -= 1
+      l[Y(row)] += 1
+      if n >= eps and N-n >= eps:
+        if (now := (n*div(l) + (N-n)*div(r))/N) < e:
+          out,e = n,now
+    return out
+  return fn
+
+def cluster(data, rows=None, stop=4, cut=cut1):
   def go(rows, cid):
     if len(rows) >= stop:
-      left,right = cut(projectToLine(data,rows))
-      return go(right], 1 + go(left, cid))
-    else:
-      for row in rows: ids[id(row)] = cid
-      return cid
+      if n := cut(projectToLine(data,rows))
+        return go(rows[n:]], 1 + go(rows[:n], cid))
+    for row in rows: ids[id(row)] = cid
+    return cid
   ids  = {}
   go(shuffle(rows or data.rows),1)
   return ids
+
+def clusters(data, rows=None, stop=4):
+  return cluster(data, rows, stop, 4, 
+                 cut2( cluster(data,rows,stop,4,cut1)))
 
 #--------------------------------------------------------------------
 treeOps = {'<=' : lambda x,y: x <= y, 
