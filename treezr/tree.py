@@ -4,29 +4,84 @@ from typing import Any,List,Iterator
 import traceback, random, time, math, sys, re
 sys.dont_write_bytecode = True
 
-Number = int|float
-Atom   = Number|str|bool
-Row    = List[Atom]
+Qty  = int | float
+Atom = Qty | str | bool
+Row  = list[Atom]
+Num  = list
+Sym  = dict
+Col  = Num | Sym
 
 the = o(keep=64, file="../../moot/optimize/misc/auto93.csv")
 
 #--------------------------------------------------------------------
-def Cols(names : List[str]) -> o:
-  all = [[] for _ in enumerates(names)]
-  return o(it=Cols, names = names, all = all, 
-           x = [col for s,col in zip(names,all) if s[-1] not in "X-+"],
-           y = [col for s,col in zip(names,all) if s[-1]     in "-+" ])
-
 def Data(src):
-  data = o(it=Data, rows=[], cols={})
-  for m,row in enumerate(src):
-    if n==0: 
-      data.cols=Cols(row)
-    else: 
-      [col.append(x) for col,x in zip(data.cols.all, row)]
-      data.rows += [rpw]
-  for col in data.cols.all: col.sort(key=value)
+  data = o(rows=[], cols={})
+  for n,row in enumerate(src):
+    if n==0: data.cols = Cols(row)
+    else:
+      [add(col,row[c]) for c,col in data.cols.all()]
+      data.rows += [row]        
+  for col in data.cols.all: ok(col)
   return data
+
+def clone(data,rows=[]):
+   return Data([data.cols.rows] + rows)
+
+def Cols(names : List[str]) -> o:
+  what = lambda s: Num() if s[0].isupper() else Sym()
+  all  = {c:what(s) for c,s in enumerate(names)}
+  return o(names = names, all = all, 
+    x = {c:all[n] for c,s in enumerate(names) if s[-1] not in "X-+"]},
+    y = {c:all[n] for c,s in enumerate(names) if s[-1] in "-+"]})
+
+def add(col,x):
+  if x != "?": 
+    if type(col) is Num: col.append(x)
+    else: col[x] = 1 + col.get(x,0)
+
+def ok(col,x):
+  return sorted(col) if type(col) is Num else col
+
+def norm(col,x):
+ lo,hi = col[0],col[-1]
+ return x if x=="?" else (x - lo)/(hi - lo + 1e-32)
+
+def dist(data:Data, row1:Row, row2:Row) -> float:
+  n,d = 0,0
+  for c,col in data.cols.x.items():
+    n += 1
+    d += _dist(col,row1[c], row2[c])**the.p
+  return (d/n) ** (1/the.p)
+
+def _dist(col, a,b):
+  if a==b=="?": return 1
+  if type(col) is Sym: return a != b
+  a,b = norm(col,a), norm(col,b)
+  a = a if a != "?" else (0 if b>0.5 else 1)
+  b = b if b != "?" else (0 if a>0.5 else 1)
+  return abs(a - b)
+
+def fastmap(data,rows):
+  zero, *few = random.choices(rows, k=the.Few)
+  D  = lambda r1,r2:dist(data,r1,r2)
+  lo = max(few, key= lambda r: D(zero,r))
+  hi = max(few, key= lambda r: D(lo,r))
+  c  = D(lo,hi)
+  x  = lambda row: (D(row,lo)**2 +c*c - D(row,hi)**2)/(2*c + 1e-32)
+  return sorted(rows, key=x)
+
+def cluster(data, rows=None, stop=2):
+  def go(rows, cid):
+    n = len(rows) // 2
+    if n >= stop:
+      rows = fastmap(data,rows)
+      return go(rows[:n], 1 + go(rows[n:], cid))
+    else:
+      for row in rows: ids[id(row)] = cid
+      return cid
+  ids  = {}
+  go(shuffle(rows or data.rows),1)
+  return ids
 
 #--------------------------------------------------------------------
 treeOps = {'<=' : lambda x,y: x <= y, 
@@ -88,6 +143,9 @@ def csv(file: str ) -> Iterator[Row]:
     for line in f:
       if (line := line.split("%")[0]):
         yield [coerce(s) for s in line.split(",")]
+
+def shuffle(lst:List) -> List:
+  random.shuffle(lst); return lst
 
 def value(x):
   return -1e32 if x=="?" else x
