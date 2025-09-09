@@ -11,7 +11,7 @@ Num  = list
 Sym  = dict
 Col  = Num | Sym
 
-the = o(keep=64, file="../../moot/optimize/misc/auto93.csv")
+the = o(p=2, few=64, file="../../moot/optimize/misc/auto93.csv")
 
 #--------------------------------------------------------------------
 def Data(src):
@@ -42,9 +42,16 @@ def add(col,x):
 def ok(col,x):
   return sorted(col) if type(col) is Num else col
 
+def div(col):
+  if type(col) is Num:
+    n=len(col)//10; return (col[9*n] - col[n])/2.56
+  else:
+    n=len(col)
+    return -sum(p*math.log(p) for m in col.values() if (p : =m/n) >0)
+
 def norm(col,x):
- lo,hi = col[0],col[-1]
- return x if x=="?" else (x - lo)/(hi - lo + 1e-32)
+  lo,hi = col[0],col[-1]
+  return x if x=="?" else (x - lo)/(hi - lo + 1e-32)
 
 def dist(data:Data, row1:Row, row2:Row) -> float:
   n,d = 0,0
@@ -61,7 +68,7 @@ def _dist(col, a,b):
   b = b if b != "?" else (0 if a>0.5 else 1)
   return abs(a - b)
 
-def fastmap(data,rows):
+def projectToLine(data,rows):
   zero, *few = random.choices(rows, k=the.Few)
   D  = lambda r1,r2:dist(data,r1,r2)
   lo = max(few, key= lambda r: D(zero,r))
@@ -70,12 +77,14 @@ def fastmap(data,rows):
   x  = lambda row: (D(row,lo)**2 +c*c - D(row,hi)**2)/(2*c + 1e-32)
   return sorted(rows, key=x)
 
-def cluster(data, rows=None, stop=2):
+def cut(rows):
+  n = len(rows)//2; return rows[:n], rows[n:]
+
+def cluster(data, rows=None, stop=4, cut=cut):
   def go(rows, cid):
-    n = len(rows) // 2
-    if n >= stop:
-      rows = fastmap(data,rows)
-      return go(rows[:n], 1 + go(rows[n:], cid))
+    if len(rows) >= stop:
+      left,right = cut(projectToLine(data,rows))
+      return go(right], 1 + go(left, cid))
     else:
       for row in rows: ids[id(row)] = cid
       return cid
