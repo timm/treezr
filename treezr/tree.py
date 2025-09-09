@@ -107,13 +107,13 @@ def cluster(data, rows=None, stop=4, cut=cut1):
         return go(rows[n:]], 1 + go(rows[:n], cid))
     for row in rows: ids[id(row)] = cid
     return cid
-  ids  = {}
+  ids = {}
   go(shuffle(rows or data.rows),1)
   return ids
 
 def clusters(data, rows=None, stop=4):
-  return cluster(data, rows, stop, 4, 
-                 cut2( cluster(data,rows,stop,4,cut1)))
+  ids= cluster(data,rows,stop,4,cut1)
+  return ids, cluster(data, rows, stop, 4, cut2(ids))
 
 #--------------------------------------------------------------------
 treeOps = {'<=' : lambda x,y: x <= y, 
