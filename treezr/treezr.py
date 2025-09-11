@@ -184,7 +184,7 @@ def treeSelects(row:Row, op:str, at:int, y:Atom) -> bool:
   return (x := row[at]) == "?" or treeOps[op](x, y)
 
 def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
-  "Create regression tree."
+  "Create regression or decision tree."
   Y = Y or (lambda row: disty(data, row))
   data.kids, data.how = [], how
   data.ys = adds(Y(row) for row in data.rows)
@@ -200,30 +200,22 @@ def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
 
 def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> o:
   "Divide a col into ranges."
-  def _sym(sym):
-    d, n = {}, 0
-    for row in rows:
-      if (x := row[col.at]) != "?":
-        n += 1
-        d[x] = d.get(x) or Klass()
-        add(d[x], Y(row))
-    return o(xpect = sum(c.n/n * div(c) for c in d.values()),
-             hows = [("==",col.at,x) for x in d])
-
-  def _num(num):
-    out, b4, lhs, rhs = None, None, Klass(), Klass()
-    xys = [(row[col.at], add(rhs, Y(row))) # add returns the "y" value
-           for row in rows if row[col.at] != "?"]
-    for x, y in sorted(xys, key=lambda z: z[0]):
-      if x != b4 and the.leaf <= lhs.n <= len(xys) - the.leaf:
-        now = (lhs.n * div(lhs) + rhs.n * div(rhs)) / len(xys)
-        if not out or now < out.xpect:
-          out = o(xpect=now, hows=[("<=",col.at,b4), (">",col.at,b4)])
-      add(lhs, sub(rhs, y))
-      b4 = x
-    return out
-
-  return (_sym if col.it is Sym else _num)(col)
+  rhs = None, Klass()
+  xys = [(r[col.at], add(rhs,Y(r))) for r in rows if r[col.at] != "?"]
+  if col.it is Sym:
+    d = {}
+    [add((d[x] := d.get(x) or Klass()), y) for x,y in xys]
+    return o(xpect = sum(c.n/len(xys) * div(c) for c in d.values()),
+             hows  = [("==",col.at,x) for x in d])
+  out, b4, lhs = None, None, Klass()
+  for x,y in sorted(xys):
+    if x != b4 and the.leaf <= lhs.n <= len(xys) - the.leaf:
+      now = (lhs.n * div(lhs) + rhs.n * div(rhs)) / len(xys)
+      if not out or now < out.xpect:
+        out = o(xpect=now, hows=[("<=",col.at,b4), (">",col.at,b4)])
+    add(lhs, sub(rhs, y))
+    b4 = x
+  return out
 
 #--------------------------------------------------------------
 def treeNodes(data:Data, lvl=0, key=None) -> Data:
