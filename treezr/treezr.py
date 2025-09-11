@@ -158,20 +158,16 @@ def distFastmap(data,rows):
   x  = lambda row: (D(row,lo)**2 +c*c - D(row,hi)**2)/(2*c + 1e-32)
   return sorted(rows, key=x)
 
-def distClusters(data, rows=None):
-  "Assign rows to clusters using recursive random projections."
-  ids  = {}
-  rows = shuffle(rows or data.rows)
-  stop = 2
-  def worker(rows, cid):
-    n = len(rows) // 2
-    if n >= stop:
+def distClusters(data, rows=None, stop=4):
+  def go(rows, cid):
+    if len(rows) >= stop:
       rows = distFastmap(data,rows)
-      return worker(rows[:n], 1 + worker(rows[n:], cid))
-    else:
-      for row in rows: ids[id(row)] = cid
-      return cid
-  worker(rows,1)
+      n = len(rows)//2
+      return go(rows[n:], 1 + go(rows[:n], cid))
+    for row in rows: ids[id(row)] = cid
+    return cid
+  ids = {}
+  go(shuffle(rows or data.rows),1)
   return ids
 
 #--------------------------------------------------------------------
@@ -189,30 +185,30 @@ def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
   data.kids, data.how = [], how
   data.ys = adds(Y(row) for row in data.rows)
   if len(data.rows) >= the.leaf:
-    hows = [how for col in data.cols.x 
-            if (how := treeCuts(col,data.rows,Y,Klass))]
-    if hows:
-      for how1 in min(hows, key=lambda c: c.xpect).hows:
-        rows1 = [r for r in data.rows if treeSelects(r, *how1)]
-        if the.leaf <= len(rows1) < len(data.rows):
-          data.kids += [Tree(clone(data,rows1), Klass, Y, how1)]
+    xpect,hows = min(treeCuts(x,data.rows,Y,Klass) for x in data.cols.x)
+    if xpect < big:
+      for how in hows:
+        rows = [r for r in data.rows if treeSelects(r, *how)]
+        if the.leaf <= len(rows) < len(data.rows):
+          data.kids += [Tree(clone(data,rows), Klass, Y, how)]
   return data
 
 def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> o:
-  "Divide a col into ranges."
-  rhs = None, Klass()
+  "Return one cut per symbol or, if Numeric, two cuts."
+  rhs = Klass()
   xys = [(r[col.at], add(rhs,Y(r))) for r in rows if r[col.at] != "?"]
-  if col.it is Sym:
-    d = {}
-    [add((d[x] := d.get(x) or Klass()), y) for x,y in xys]
-    return o(xpect = sum(c.n/len(xys) * div(c) for c in d.values()),
-             hows  = [("==",col.at,x) for x in d])
-  out, b4, lhs = None, None, Klass()
+  if col.it is Sym: 
+    d={}; for x,y in xys:
+            d[x] = d.get(x) or Klass()
+            add(d[x], y)
+    return (sum(c.n/len(xys) * div(c) for c in d.values()),
+            [("==",col.at,x) for x in d])
+  b4, lhs, out = None, Klass(), (big, [])
   for x,y in sorted(xys):
     if x != b4 and the.leaf <= lhs.n <= len(xys) - the.leaf:
       now = (lhs.n * div(lhs) + rhs.n * div(rhs)) / len(xys)
-      if not out or now < out.xpect:
-        out = o(xpect=now, hows=[("<=",col.at,b4), (">",col.at,b4)])
+      if not out or now < out[0]:
+        out = (now, [("<=",col.at,b4), (">",col.at,b4)])
     add(lhs, sub(rhs, y))
     b4 = x
   return out
@@ -297,9 +293,17 @@ def dataDwin(file=None):
   b4   = adds(D(row) for row in data.rows)
   return data, D, lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
   
-def demo():
+def eg__tree():
+  data,D,win = dataDwin(the.file)
+  rows = random.choices(data.rows,k=50)
+  ids  = distClusters(data,rows)
+  tree = Tree(clone(data, rows),
+              Y=lambda row: ids[id(row)],
+              Klass=Sym)
+  treeShow(tree)
+
+def eg__demo():
   "The usual run"
-  random.seed(the.seed)
   data,D,win = dataDwin(the.file)
   for b in range(10,200,20):
     print(".")
@@ -318,7 +322,7 @@ def demo():
 
 def main():
   "top-level call"
-  _main(the,globals()); demo()
+  _main(the,globals())
 
 #---------------------------------------------------------------------
 the = o(**{k:coerce(v) for k,v in re.findall(r"(\w+)=(\S+)",__doc__)})
