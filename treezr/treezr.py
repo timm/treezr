@@ -18,19 +18,19 @@ Options:
 
 """
 from types import SimpleNamespace as o
-from typing import Any,List,Iterator
+from typing import Any,Iterator
 import traceback, random, time, math, sys, re
 
 sys.dont_write_bytecode = True
 
-Number = int|float
-Atom   = Number|str|bool
-Row    = List[Atom]
+Qty     = int | float
+Atom    = Qty | str | bool
+Row     = list[Atom]
 
-big    = 1e32
+big     = 1e32
 
 #--------------------------------------------------------------------
-def label(row): 
+def label(row:Row) -> Row: 
   "Stub. Ensure a row is labelled."
   return row
 
@@ -44,7 +44,7 @@ def Sym(at=0,s=" ") -> o:
   "Create a symbolic column summarizer"
   return o(it=Sym, at=at, txt=s, n=0, has={})
 
-def Cols(names : List[str]) -> o:
+def Cols(names : list[str]) -> o:
   "Create column summaries from column names"
   all=[(Num if s[0].isupper() else Sym)(c,s) for c,s in enumerate(names)]
   klass=None
@@ -132,7 +132,7 @@ def disty(data:Data, row:Row) -> float:
   "Distance from row to best y-values"
   return dist(abs(norm(c, row[c.at]) - c.more) for c in data.cols.y)
 
-def distysort(data:Data,rows=None) -> List[Row]:
+def distysort(data:Data,rows=None) -> list[Row]:
   "Sort rows by distance to best y-values"
   return sorted(rows or data.rows, key=lambda r: disty(data,r))
 
@@ -274,7 +274,7 @@ def csv(file: str ) -> Iterator[Row]:
       if (line := line.split("%")[0]):
         yield [coerce(s) for s in line.split(",")]
 
-def shuffle(lst:List) -> List:
+def shuffle(lst:list) -> list:
   "shuffle a list, in place"
   random.shuffle(lst); return lst
 
