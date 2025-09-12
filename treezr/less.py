@@ -7,19 +7,20 @@ the_leaf = 3
 big = 1e32
 
 # Incremental stats helpers
-def sd(n, m2): 
-    return 0 if n < 2 else (m2 / (n - 1))**0.5
+def sd(stats): 
+  n,_,m2 = stats
+  return 0 if n < 2 else (m2 / (n - 1))**0.5
 
-def adds(lst,stats=None,inc=1):
-   n,mu,m2=stats or (0,0,0)
-   for y in lst:
-      n += inc
-      d = y - mu
+def add(src, stats=None, inc=1):
+   n,mu,m2 = stats or (0,0,0)
+   for x in hasattr(src,"__iter__") or [src]:
+      n  += inc
+      d   = x - mu
       mu += inc * (d / n)
-      stats = (n.mu, m2 + inc * (d * (y - mu)))
-   return stats
+      m2 += inc * (d * (x - mu))
+   return (n, mu, m2)
 
-def subs(lst,stats): return adds(lst,stats,-1)
+def sub(x,stats): return add(x,stats,-1)
  
 def entropy(lst):
     if not lst: return 0
@@ -75,63 +76,42 @@ def csv(file):
                 yield [coerce(s) for s in line.split(",")]
 
 def treeCuts(at, is_sym, rows, Y):
-    "Return best cut for column at position 'at'"
-    valid = [(r[at], Y(r)) for r in rows if r[at] != "?"]
-    if not valid: return big, []
-    
-    if is_sym:
-        groups = {}
-        for x, y in valid:
-            if x not in groups: groups[x] = []
-            groups[x].append(y)
-        diversity = sum(len(ys)/len(valid) * entropy(ys) 
-                       for ys in groups.values())
-        return diversity, [("==", at, x) for x in groups]
-    
-    # Numeric: fast incremental stats with tuples
-    valid.sort()
-    best_div, best_cuts = big, []
-    
-    # Initialize RHS with all values
-    lhs,rhs = (0,0,0), (0, 0, 0)
-    for _, y in valid: rhs = adds([y],rhs)
-    
-    
-    for i, (x, y) in enumerate(valid[:-1]):
-        # Move y from RHS to LHS
-        lhs, rhs = adds([y],lhs), subs([y],rhs)
-        if (x != valid[i+1][0] and 
-            the_leaf <= lhs[0] <= len(valid) - the_leaf):
-            div = (lhs[0] * sd(lhs[0], lhs[2]) + rhs[0] * sd(rhs[0], rhs[2])) / len(valid)
-            if div < best_div:
-                best_div = div
-                best_cuts = [("<=", at, x), (">", at, x)]
-    
-    return best_div, best_cuts
-   
+  "Return best cut for column at position 'at'"
+  div, cuts = big, []
+  xys = [(r[at], Y(r)) for r in rows if r[at] != "?"]
+  if is_sym:
+    d = {}
+    for x, y in xys:
+      if x not in d: d[x] = []
+      d[x] += [y]
+    here = sum(len(ys)/len(xys) * entropy(ys) for ys in d.values())
+    div, cuts = here, [("==", at, x) for x in d]
+  else:
+    xys.sort()
+    l,r = (0,0,0), (0,0,0) # (n,mu,m2)
+    for _, y in xys: r = add(y,r)
+    for i, (x, y) in enumerate(xys[:-1]):
+      l = add(y,l)
+      r = sub(y,r)
+      if x != xys[i+1][0]:
+        if the_leaf <= l[0] <= len(xys) - the_leaf):
+          here = (i*sd(l) + (len(xys) - i)*sd(r)) / len(xys)
+          if here < div:
+            div, cuts = here, [("<=", at, x), (">", at, x)]
+  return div, cuts
 
 def Tree(rows, names, Y=None, how=None):
-    "Create tree from list of lists"
-    Y = Y or (lambda row: 0)
-    tree = o(rows=rows, how=how, kids=[], 
-             mu=adds(Y(row) for row in rows])[1])
-u)
-    
-    if len(rows) >= the_leaf:
-        x_cols = [i for i, name in enumerate(names) 
-                 if name[-1] not in "X-+"]
-        
-        best_div, best_cuts = min(
-            treeCuts(at, not names[at][0].isupper(), rows, Y)
-            for at in x_cols)
-        
-        if best_div < big:
-            for cut in best_cuts:
-                subset = [r for r in rows if selects(r, *cut)]
-                if the_leaf <= len(subset) < len(rows):
-                    tree.kids.append(Tree(subset, names, Y, cut))
-    
-    return tree
+  "Create tree from list of lists"
+  tree = o(rows=rows, how=how, kids=[], mu=add(Y(r) for r in rows)[1])
+  if len(rows) >= the_leaf:
+    div, cuts = min(treeCuts(at, s[0].islower(), rows, Y)
+                    for at,s in enumerate(names) if s[-1] not in "X-+" )
+    if div < big:
+      for cut in cuts:
+        subset = [r for r in rows if selects(r, *cut)]
+        if the_leaf <= len(subset) < len(rows):
+          tree.kids += [Tree(subset, names, Y, cut)]
+  return tree
 
 def treeLeaf(tree, row):
     "Find which leaf a row belongs to"
