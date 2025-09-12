@@ -136,6 +136,28 @@ treeOps = {'<=' : lambda x,y: x <= y,
 def treeSelects(row:Row, op:str, at:int, y:Atom) -> bool: 
   return (x := row[at]) == "?" or treeOps[op](x, y)
 
+def num(v,it=None):
+  n,mu,m2 = it or (0,0,0)
+  n      += 1
+  d       = v - mu
+  mu     += d/n
+  return (n, mu, m2 + d*(v-mu))
+
+def div(it)
+  match it:
+    case (n,_,m2):  return 0 if n < 2 else (max(0,m2)/(n-1))**.5
+    case (n,has):  return -sum(p*math.log(p) for m in has.values() if (p:=m/n)>0)
+
+rows=[]
+for row in csv(the.file): 
+  if head: rows += [row]
+  else: head=row
+tree(head,rows)
+
+def tree(head,rows)
+ 
+def treeCuts(at, sym, rows, Y:callable, 
+  
 def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
   Y = Y or (lambda row: disty(data, row))
   data.kids, data.how = [], how

@@ -97,7 +97,6 @@ def add(x: o, v:Any, inc=1, zap=False) -> Any:
   else: raise TypeError(f"cannot add to {type(x)}")
   return v
 
-
 #--------------------------------------------------------------------
 def norm(num:Num, v:float) -> float:  
   "Normalize a value to 0..1 range"
@@ -179,6 +178,9 @@ def treeSelects(row:Row, op:str, at:int, y:Atom) -> bool:
   "Have we selected this row?"
   return (x := row[at]) == "?" or treeOps[op](x, y)
 
+rows=[]
+for row in csv(the.file):
+
 def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
   "Create regression or decision tree."
   Y = Y or (lambda row: disty(data, row))
@@ -193,7 +195,7 @@ def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
           data.kids += [Tree(clone(data,rows), Klass, Y, how)]
   return data
 
-def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> o:
+def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> (float,list):
   "Return one cut per symbol or, if Numeric, two cuts."
   rhs = Klass()
   xys = [(r[col.at], add(rhs,Y(r))) for r in rows if r[col.at] != "?"]
