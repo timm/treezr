@@ -178,9 +178,6 @@ def treeSelects(row:Row, op:str, at:int, y:Atom) -> bool:
   "Have we selected this row?"
   return (x := row[at]) == "?" or treeOps[op](x, y)
 
-rows=[]
-for row in csv(the.file):
-
 def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
   "Create regression or decision tree."
   Y = Y or (lambda row: disty(data, row))
@@ -200,9 +197,10 @@ def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> (float,list):
   rhs = Klass()
   xys = [(r[col.at], add(rhs,Y(r))) for r in rows if r[col.at] != "?"]
   if col.it is Sym: 
-    d={}; for x,y in xys:
-            d[x] = d.get(x) or Klass()
-            add(d[x], y)
+    d={}; 
+    for x,y in xys:
+      d[x] = d.get(x) or Klass()
+      add(d[x], y)
     return (sum(c.n/len(xys) * div(c) for c in d.values()),
             [("==",col.at,x) for x in d])
   b4, lhs, out = None, Klass(), (big, [])
