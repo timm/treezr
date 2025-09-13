@@ -6,29 +6,31 @@ import math
 the_leaf = 3
 big = 1e32
 
+from typing import NamedTuple, get_type_hints
+
+def of(fn, doc=""):
+  cls = next(iter(get_type_hints(fn).values()), None)  # first type hint
+  if cls: setattr(cls, fn.__name__, fn); fn.__doc__ = doc 
+  return fn
+
 # Incremental stats helpers
-def sd(stats): 
-  n,_,m2 = stats
-  return 0 if n < 2 else (m2 / (n - 1))**0.5
+def Stats(n=0, mu=0, m2=0, lo=big, hi=-big): return (n,mu,m2,lo,hi)
+
+def sd(n,_mu,m2,*_): return 0 if n < 2 else (m2 / (n - 1))**0.5
 
 def add(src, stats=None, inc=1):
-   n,mu,m2 = stats or (0,0,0)
+   n,mu,m2,lo,hi = stats or Stats()
    for x in hasattr(src,"__iter__") or [src]:
       n  += inc
       d   = x - mu
       mu += inc * (d / n)
       m2 += inc * (d * (x - mu))
-   return (n, mu, m2)
+      lo  = min(lo,x)
+      hi  = max(hi,x)
+   return (n, mu, m2, lo, hi)
 
 def sub(x,stats): return add(x,stats,-1)
  
-def entropy(lst):
-    if not lst: return 0
-    counts = {}
-    for x in lst: counts[x] = counts.get(x, 0) + 1
-    n = len(lst)
-    return -sum((c/n) * math.log(c/n, 2) for c in counts.values())
-
 # Tree operations
 def selects(row, op, at, y):
   x = row[at]
@@ -75,6 +77,10 @@ def csv(file):
             if (line := line.split("%")[0]):
                 yield [coerce(s) for s in line.split(",")]
 
+def entropy(d):
+  N = sum(d.values())
+  return -sum(p*math.log(p,2) for n in d.values() if (p:=n/N) > 0)
+
 def treeCuts(at, is_sym, rows, Y):
   "Return best cut for column at position 'at'"
   div, cuts = big, []
@@ -82,20 +88,20 @@ def treeCuts(at, is_sym, rows, Y):
   if is_sym:
     d = {}
     for x, y in xys:
-      if x not in d: d[x] = []
-      d[x] += [y]
-    here = sum(len(ys)/len(xys) * entropy(ys) for ys in d.values())
+      d[x]    = d.get(x) or {}
+      d[x][y] = d[x].get(y,0) + 1
+    here = sum(sum(ys.values())/len(xys) * entropy(ys) for ys in d.values())
     div, cuts = here, [("==", at, x) for x in d]
   else:
     xys.sort()
-    l,r = (0,0,0), (0,0,0) # (n,mu,m2)
+    l,r = Stats(), Stats()
     for _, y in xys: r = add(y,r)
     for i, (x, y) in enumerate(xys[:-1]):
       l = add(y,l)
       r = sub(y,r)
       if x != xys[i+1][0]:
-        if the_leaf <= l[0] <= len(xys) - the_leaf):
-          here = (i*sd(l) + (len(xys) - i)*sd(r)) / len(xys)
+        if the_leaf <= l[0] <= len(xys) - the_leaf:
+          here = (i*sd(*l) + (len(xys) - i)*sd(*r)) / len(xys)
           if here < div:
             div, cuts = here, [("<=", at, x), (">", at, x)]
   return div, cuts
