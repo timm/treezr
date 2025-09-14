@@ -1,44 +1,119 @@
 #!/usr/bin/env python3
-from types import SimpleNamespace as o
-import math
+from typing import Iterator,Iterable
+from math import log,sqrt
+import random,sys
 
-# Config
-the_leaf = 3
-big = 1e32
+class o(dict): __getattr__, __setattr__ = dict.get, dict.__setitem__
 
-from typing import NamedTuple, get_type_hints
+Qty  = int | float
+Atom = Qty | str | bool
+Row  = list[Atom]
+big  = 1e32  # some very large number
+the  = o(seed     = 1234567891,
+         decimals = 2, 
+         file     = "../../moot/optimize/config/SSA-csv")
 
-def of(fn, doc=""):
-  cls = next(iter(get_type_hints(fn).values()), None)  # first type hint
-  if cls: setattr(cls, fn.__name__, fn); fn.__doc__ = doc 
-  return fn
+#--------------------------------------------------------------------
+def Num(n=0, mu=0, m2=0, lo=big, hi=-big): return (n,mu,m2,lo,hi)
+def Op(op=">=",at=0, value=0)            : return (op,at,value)
+def Data(rows, dy, dx, win, names)       : return (rows,dy,dx,win,names)
 
-# Incremental stats helpers
-def Stats(n=0, mu=0, m2=0, lo=big, hi=-big): return (n,mu,m2,lo,hi)
-
-def sd(n,_mu,m2,*_): return 0 if n < 2 else (m2 / (n - 1))**0.5
-
-def add(src, stats=None, inc=1):
-   n,mu,m2,lo,hi = stats or Stats()
-   for x in hasattr(src,"__iter__") or [src]:
-      n  += inc
-      d   = x - mu
-      mu += inc * (d / n)
-      m2 += inc * (d * (x - mu))
-      lo  = min(lo,x)
-      hi  = max(hi,x)
-   return (n, mu, m2, lo, hi)
-
-def sub(x,stats): return add(x,stats,-1)
- 
-# Tree operations
+#--------------------------------------------------------------------
 def selects(row, op, at, y):
   x = row[at]
-  if x == "?": return True
+  if x  == "?" : return True
   if op == "<=": return x <= y
   if op == "==": return x == y
-  if op == ">": return x > y
+  if op == ">" : return x > y
+ 
+def stdev(n,_mu,m2,*_)    : return 0 if n < 2 else (m2 / (n - 1))**0.5
 
+def adds(src, it=None):
+  it = it or Num()
+  for x in src: it = add(x, *it)
+  return it
+
+def sub(x, *num): return add(x, *num, inc=-1)
+
+def add(x, n, mu, m2, lo, hi, inc=1):
+  if inc < 0 and n < 2: return Num()
+  n  += inc
+  d   = x - mu
+  mu += inc * (d / n)
+  m2 += inc * (d * (x - mu))
+  lo  = min(lo,x)
+  hi  = max(hi,x)
+  return (n, mu, m2, lo, hi)
+
+def eg__stats():
+  lst = [random.gauss(10,1) for _ in range(1000)]
+  stats = adds(lst)
+  for i,x in enumerate(lst): 
+    stats = add(x,*stats)
+    if i==500: sd = stdev(*stats)
+  for i,x in enumerate(lst[::-1]):
+    stats = sub(x,*stats)
+    if i==500: print(round(sd,4), round(stdev(*stats),4))
+
+def coerce(s):
+  try: return int(s)
+  except: 
+    try: return float(s)
+    except: return s.strip()
+
+def Data(src):
+  def add(row):
+    rows += [row]
+    for c in lo:
+      if (v := row[c]) != "?": 
+        lo[c],hi[c] = min(v,lo[c]), max(v,hi[c])
+  
+  def _dist(src):
+    d,n = 0,0
+    for x in src: n += 1; d += x ** the.p
+    return (d/n) ** (1/the.p)
+
+  def norm(c, x): 
+    return x if x == "?" else (x - lo[c]) / (hi[c] - lo[c] + 1e-32)
+  
+  def fx1(c, a, b):
+    if a == b == "?": return 1
+    if c not in w: return a != b
+    a, b = norm(c, a), norm(c, b)
+    a = a if a != "?" else (0 if b > 0.5 else 1)
+    b = b if b != "?" else (0 if a > 0.5 else 1)
+    return abs(a - b)
+  
+  def winner():
+    _,__,___,lo,hi = adds(map(data.dy, data.rows))
+    return lambda z: int(100*(x - lo) / (hi - lo + 1e-32))
+
+  names, *rows = list(src)
+  lo, hi, w = {}, {},{}
+  x,y = [],[]
+  for c, s in enumerate(names):
+    if s[-1] == "X": continue
+    (y if s[-1] in "-+" else x).append(c)
+    if s.isupper():
+      lo[c], hi[c], w[c] = big, -big, 0 if s[-1] == "-" else 1
+  [add(row) for row in rows]
+  data= o(rows=rows, names=names, add=add,
+    cols=o(lo=lo, hi=hi, w=w, x=x, y=y), winner=winnner,
+    fx=lambda a,b: _dist(fx1(c, a[c], b[c]) for c in x),
+    fy=lambda row: _dist(abs(norm(c, row[c]) - w[c]) for c in y))
+  return data
+
+if __name__ == "__main__":
+  for n,s in enumerate(sys.argv):
+    if (fn := globals().get(f"eg{s.replace('-', '_')}")):
+      random.seed(the.seed); fn()
+    else:
+      for k in the:
+        if s=="-"+k[0]: the[k] = coerce(sys.argv[n+1])
+
+exit()
+
+# Tree operations
 def ranges(rows, names):
     "Pre-compute lo/hi for all y-columns"
     y_cols = [i for i, name in enumerate(names) if name[-1] in "+-"]
@@ -63,23 +138,9 @@ def disty(row, rngs, names):
     
     return sum(d*d for d in dists) ** 0.5 if dists else 0
 
-# Core functions (given)
-def coerce(s):
-    for fn in [int, float]:
-        try: return fn(s)
-        except: pass
-    s = s.strip()
-    return {'True': True, 'False': False}.get(s, s)
-
-def csv(file):
-    with open(file, encoding="utf-8") as f:
-        for line in f:
-            if (line := line.split("%")[0]):
-                yield [coerce(s) for s in line.split(",")]
-
 def entropy(d):
   N = sum(d.values())
-  return -sum(p*math.log(p,2) for n in d.values() if (p:=n/N) > 0)
+  return -sum(p*log(p,2) for n in d.values() if (p:=n/N) > 0)
 
 def treeCuts(at, is_sym, rows, Y):
   "Return best cut for column at position 'at'"
@@ -142,8 +203,21 @@ def treeShow(tree, names):
         leaf = ";" if not node.kids else ""
         print(f"{len(node.rows):4} {node.mu:6.2f} {indent}{rule}{leaf}")
 
-# Example usage:
+def csv(file: str) -> Iterator[Row]:
+  with open(file, encoding="utf-8") as f:
+    for line in f:
+      if (line := line.split("%")[0]): # skip comments
+        yield [coerce(s) for s in line.split(",")]
+
 if __name__ == "__main__":
+  for n,s in enumerate(sys.argv):
+    if (fn := globals().get(f"eg{s.replace('-', '_')}")):
+      random.seed(the.seed); fn()
+    else:
+      for k in vars(the):
+        if s=="-"+k[0]: the[k] = coerce(sys.argv[n+1])
+      print(the)
+
     # Read data
     data = list(csv("auto93.csv"))
     names = data[0]  # header row: ['Clndrs','Volume','Hp+','Lbs-',...]
