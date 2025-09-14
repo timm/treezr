@@ -14,11 +14,8 @@ the  = o(seed     = 1234567891,
          file     = "../../moot/optimize/config/SSA-csv")
 
 #--------------------------------------------------------------------
-def Num(n=0, mu=0, m2=0, lo=big, hi=-big): return (n,mu,m2,lo,hi)
-def Op(op=">=",at=0, value=0)            : return (op,at,value)
-def Data(rows, dy, dx, win, names)       : return (rows,dy,dx,win,names)
+def Op(op=">=",at=0, value=0): return (op,at,value)
 
-#--------------------------------------------------------------------
 def selects(row, op, at, y):
   x = row[at]
   if x  == "?" : return True
@@ -26,12 +23,10 @@ def selects(row, op, at, y):
   if op == "==": return x == y
   if op == ">" : return x > y
  
-def stdev(n,_mu,m2,*_)    : return 0 if n < 2 else (m2 / (n - 1))**0.5
+#--------------------------------------------------------------------
+def Num(n=0, mu=0, m2=0, lo=big, hi=-big): return (n,mu,m2,lo,hi)
 
-def adds(src, it=None):
-  it = it or Num()
-  for x in src: it = add(x, *it)
-  return it
+def stdev(n,_mu,m2,*_)    : return 0 if n < 2 else (m2 / (n - 1))**0.5
 
 def sub(x, *num): return add(x, *num, inc=-1)
 
@@ -45,6 +40,74 @@ def add(x, n, mu, m2, lo, hi, inc=1):
   hi  = max(hi,x)
   return (n, mu, m2, lo, hi)
 
+def adds(src,it=None):
+  it = it or Num()
+  for x in src: add(x, *it)
+  return it
+     
+#--------------------------------------------------------------------
+def Cols(names):
+  lo, hi, w, x, y = {}, {}, {}, [], []
+  for c, s in enumerate(names):
+    if s[-1] == "X": continue
+    (y if s[-1] in "-+" else x).append(c)
+    if s.isupper():
+      lo[c], hi[c], w[c] = big, -big, 0 if s[-1] == "-" else 1
+  cols = o(it=Cols, names=names, lo=lo, hi=hi, w=w, x=x, y=y)
+  return cols
+
+def colsClone(i): return Cols(i.names)
+
+def colsAdd(i,row):
+  for c in i.lo:
+    if (v := row[c]) != "?":
+      i.lo[c] = min(v, i.lo[c])
+      i.hi[c] = max(v, i.hi[c])
+
+def colsNorm(i, c, x):
+  return x if x == "?" else (x - i.lo[c]) / (i.hi[c] - i.lo[c] + 1e-32)
+
+def colsWin(i,rows):
+  _,__,___,lo,hi = adds(colsy(i,row) for row in rows)
+  return lambda v: int(100 * (v-lo) / (hi - lo + 1e-32))
+
+def colsx(i, r1, r2):
+  def fn(c, a, b):
+    if a == b == "?": return 1
+    if c not in i.w: return a != b
+    a, b = colsNorm(i, c, a), colsNorm(i, c, b)
+    a = a if a != "?" else (0 if b > 0.5 else 1)
+    b = b if b != "?" else (0 if a > 0.5 else 1)
+    return abs(a - b)
+
+  return dist(fn(c, r1[c], r2[c]) for c in i.x)
+
+def colsy(i, row):
+  return dist(abs(colsNorm(i,c,row[c]) - i.w[c]) for c in i.y)
+
+#--------------------------------------------------------------------
+def csv(file: str) -> Iterator[Row]:
+  with open(file, encoding="utf-8") as f:
+    for line in f:
+      if (line := line.split("%")[0]): # skip comments
+        yield [coerce(s) for s in line.split(",")]
+
+def entropy(d):
+  N = sum(d.values())
+  return -sum(p*log(p,2) for n in d.values() if (p:=n/N) > 0)
+
+def coerce(s):
+  try: return int(s)
+  except: 
+    try: return float(s)
+    except: return s.strip()
+
+def dist(src, p=2):
+  d, n = 0, 0
+  for v in src: n, d = n + 1, d + v**p
+  return (d/n) ** (1/p)
+
+#--------------------------------------------------------------------
 def eg__stats():
   lst = [random.gauss(10,1) for _ in range(1000)]
   stats = adds(lst)
@@ -55,54 +118,7 @@ def eg__stats():
     stats = sub(x,*stats)
     if i==500: print(round(sd,4), round(stdev(*stats),4))
 
-def coerce(s):
-  try: return int(s)
-  except: 
-    try: return float(s)
-    except: return s.strip()
-
-def Data(src):
-  def add(row):
-    rows += [row]
-    for c in lo:
-      if (v := row[c]) != "?": 
-        lo[c],hi[c] = min(v,lo[c]), max(v,hi[c])
-  
-  def _dist(src):
-    d,n = 0,0
-    for x in src: n += 1; d += x ** the.p
-    return (d/n) ** (1/the.p)
-
-  def norm(c, x): 
-    return x if x == "?" else (x - lo[c]) / (hi[c] - lo[c] + 1e-32)
-  
-  def fx1(c, a, b):
-    if a == b == "?": return 1
-    if c not in w: return a != b
-    a, b = norm(c, a), norm(c, b)
-    a = a if a != "?" else (0 if b > 0.5 else 1)
-    b = b if b != "?" else (0 if a > 0.5 else 1)
-    return abs(a - b)
-  
-  def winner():
-    _,__,___,lo,hi = adds(map(data.dy, data.rows))
-    return lambda z: int(100*(x - lo) / (hi - lo + 1e-32))
-
-  names, *rows = list(src)
-  lo, hi, w = {}, {},{}
-  x,y = [],[]
-  for c, s in enumerate(names):
-    if s[-1] == "X": continue
-    (y if s[-1] in "-+" else x).append(c)
-    if s.isupper():
-      lo[c], hi[c], w[c] = big, -big, 0 if s[-1] == "-" else 1
-  [add(row) for row in rows]
-  data= o(rows=rows, names=names, add=add,
-    cols=o(lo=lo, hi=hi, w=w, x=x, y=y), winner=winnner,
-    fx=lambda a,b: _dist(fx1(c, a[c], b[c]) for c in x),
-    fy=lambda row: _dist(abs(norm(c, row[c]) - w[c]) for c in y))
-  return data
-
+#--------------------------------------------------------------------
 if __name__ == "__main__":
   for n,s in enumerate(sys.argv):
     if (fn := globals().get(f"eg{s.replace('-', '_')}")):
@@ -112,35 +128,6 @@ if __name__ == "__main__":
         if s=="-"+k[0]: the[k] = coerce(sys.argv[n+1])
 
 exit()
-
-# Tree operations
-def ranges(rows, names):
-    "Pre-compute lo/hi for all y-columns"
-    y_cols = [i for i, name in enumerate(names) if name[-1] in "+-"]
-    rngs = {}
-    for at in y_cols:
-        vals = [r[at] for r in rows if r[at] != "?"]
-        if vals: rngs[at] = (min(vals), max(vals))
-    return rngs
-
-def disty(row, rngs, names):
-    "Distance from row to best y-values (using pre-computed ranges)"
-    y_cols = [i for i, name in enumerate(names) if name[-1] in "+-"]
-    if not y_cols: return 0
-    
-    dists = []
-    for at in y_cols:
-        if at not in rngs: continue
-        lo, hi = rngs[at]
-        norm_val = (row[at] - lo) / (hi - lo + 1e-32) if row[at] != "?" else 0.5
-        ideal = 1.0 if names[at][-1] == "+" else 0.0
-        dists.append(abs(norm_val - ideal))
-    
-    return sum(d*d for d in dists) ** 0.5 if dists else 0
-
-def entropy(d):
-  N = sum(d.values())
-  return -sum(p*log(p,2) for n in d.values() if (p:=n/N) > 0)
 
 def treeCuts(at, is_sym, rows, Y):
   "Return best cut for column at position 'at'"
@@ -202,12 +189,6 @@ def treeShow(tree, names):
         rule = f"if {names[at]} {op} {y}"
         leaf = ";" if not node.kids else ""
         print(f"{len(node.rows):4} {node.mu:6.2f} {indent}{rule}{leaf}")
-
-def csv(file: str) -> Iterator[Row]:
-  with open(file, encoding="utf-8") as f:
-    for line in f:
-      if (line := line.split("%")[0]): # skip comments
-        yield [coerce(s) for s in line.split(",")]
 
 if __name__ == "__main__":
   for n,s in enumerate(sys.argv):
