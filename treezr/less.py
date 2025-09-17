@@ -8,43 +8,94 @@ class o(dict): __getattr__, __setattr__ = dict.get, dict.__setitem__
 Qty  = int | float
 Atom = Qty | str | bool
 Row  = list[Atom]
-big  = 1e32  # some very large number
 the  = o(seed     = 1234567891,
          decimals = 2, 
+         bins     = 9,
          file     = "../../moot/optimize/config/SSA-csv")
 
+big  = 1e32  # some very large number
+
+#--------------------------------------------------------------------
+def is_sym(col): return len(col)==2
+
+def Num(n=0, mu=0, m2=0): return (n, mu, m2)
+def Sym(n=0, has=None): return (n, has or {})
+
+def adds(src, col=None):
+  col = col or Num()
+  for x in src: col = add(x, col)
+  return col
+
+def add(x, col):
+  def _num(n, mu, m2):
+    N = n + 1
+    d = x - mu
+    MU = mu + d / N
+    return (N, MU, m2 + d * (x - MU))
+  def _sym(n, has):
+    N = n + 1
+    has[x] = 1 + has.get(x, 0)
+    return (N, has)
+  return (_sym if is_sym(col) else _num)(*col)
+
+def cols(rxs):
+  if is_sym(rxs[0]):
+    N, HAS = 0, {}
+    for n, has in rxs:
+      N += n
+      for s, c in has.items(): 
+        HAS[s] = HAS.get(s, 0) + c
+    return (N, HAS)
+  else:
+    N = sum(n for n, mu, m2 in rxs)
+    MU = sum(n * mu for n, mu, m2 in rxs) / N
+    return (N, MU, sum(m2 + n * (mu - MU)**2 for n, mu, m2 in rxs))
+
+def cdf(x, n,mu,m2):
+  fn = lambda z: 1 - 0.5 * exp(-(0.717*z + 0.416*z*z))
+  z  = (x - mu) / (m2 / (n - 1))**0.5
+  return fn(z) if z > 0 else 1 - fn(-z)
+
+def bin(x, col):
+  return x if is_sym(col) else max(bins-1, int(the.bins * cdf(x,*col)))
+
+def div(col):
+  def _num(n, _, m2): return 0 if n < 2 else (m2 / (n - 1))**0.5
+  def _sym(n, has):
+    N = sum(has.values())
+    return -sum(p*log(p) for n in has.values() if (p:=n/N) > 0)
+  return (_sym if is_sym(col) else _num)(*col)
+
+def bins(col,rows,Y):
+  xys = [(x,Y(row)) for row in rows if (x:=row[col.at]) != "?"]
+  if is_sym(col):
+    d = {}
+    for x,y in xys: d[x] = add(y, d.get(x) or Sym())
+    return (sum(sym[0]/N * div(sym) for sym in d.values()),
+            [("==",col.at,x) for x in d])
+  else:
+    xys.sort()
+    b4, lhs, out = None, Klass(), (big, [])
+    for x,y in xys[:-1]:
+      if x != b4 and the.leaf <= lhs.n <= len(xys) - the.leaf:
+        now = (lhs.n * div(lhs) + rhs.n * div(rhs)) / len(xys)
+        if not out or now < out[0]:
+          out = (now, [("<=",col.at,b4), (">",col.at,b4)])
+      add(lhs, sub(rhs, y))
+    b4 = x
+  return out
+       
+a sum
 #--------------------------------------------------------------------
 def Op(op=">=",at=0, value=0): return (op,at,value)
 
 def selects(row, op, at, y):
-  x = row[at]
-  if x  == "?" : return True
-  if op == "<=": return x <= y
-  if op == "==": return x == y
-  if op == ">" : return x > y
- 
-#--------------------------------------------------------------------
-def Num(n=0, mu=0, m2=0, lo=big, hi=-big): return (n,mu,m2,lo,hi)
+  if (x:=row[at]) == "?" : return True
+  if op == "<="          : return x <= y
+  if op == "=="          : return x == y
+  if op == ">"           : return x > y
+ def Num(n=0, mu=0, m2=0, lo=big, hi=-big): return (n,mu,m2,lo,hi)
 
-def stdev(n,_mu,m2,*_)    : return 0 if n < 2 else (m2 / (n - 1))**0.5
-
-def sub(x, *num): return add(x, *num, inc=-1)
-
-def add(x, n, mu, m2, lo, hi, inc=1):
-  if inc < 0 and n < 2: return Num()
-  n  += inc
-  d   = x - mu
-  mu += inc * (d / n)
-  m2 += inc * (d * (x - mu))
-  lo  = min(lo,x)
-  hi  = max(hi,x)
-  return (n, mu, m2, lo, hi)
-
-def adds(src,it=None):
-  it = it or Num()
-  for x in src: add(x, *it)
-  return it
-     
 #--------------------------------------------------------------------
 def Cols(names):
   lo, hi, w, x, y = {}, {}, {}, [], []
