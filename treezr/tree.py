@@ -1,93 +1,80 @@
 #!/usr/bin/env python3 
 from types import SimpleNamespace as o
-from typing import Any,Iterator
-import traceback, random, time, math, sys, re
+from typing import Iterator, Iterable
+import traceback, random, time, sys, re
+from math import log
+
 sys.dont_write_bytecode = True
 
 Qty  = int | float
 Atom = Qty | str | bool
 Row  = list[Atom]
-Num  = list
+Rows = list[Row]
+Num  = tuple
 Sym  = dict
 Col  = Num | Sym
+Data = o
 
-the = o(p=2, few=64, file="../../moot/optimize/misc/auto93.csv",
-        seed=1234567891)
+the = o(p=2, few=64, seed=1234567891, Few=256, leaf=4,
+        file="../../moot/optimize/misc/auto93.csv")
+
+big = 1e32
 
 #--------------------------------------------------------------------
-def Data(src):
-  data = o(rows=[], cols={})
-  for n,row in enumerate(src):
-    if n==0: data.cols = Cols(row)
-    else:
-      [add(col,row[c]) for c,col in data.cols.all.items()]
-      data.rows += [row]        
-  for col in data.cols.all: ok(col)
+def Data(src: Iterable):
+  rows = iter(src)
+  data = o(cols=Cols(next(rows)), rows=[])
+  [adds(data,row) for row in rows]
   return data
 
+def adds(data,row):
+  data.rows += [row]
+  for c in data.cols.all: add(data.cols.all, c, row[c]) 
+  return row
+
+def add(cols,c,v):
+  if v != "?":
+    if type(cols[c]) is Sym: 
+      cols[c][v] = 1 + cols[c].get(v,0)
+    else: 
+      cols[c] = (min(v,cols[c][0]), max(v,cols[c][1]))
+  return v
+
 def clone(data,rows=[]):
-   return Data([data.cols.rows] + rows)
+  return Data([data.cols.names] + rows)
 
-def Cols(names : list[str]) -> o:
-  what = lambda s: Num() if s[0].isupper() else Sym()
-  all  = {c:what(s) for c,s in enumerate(names)}
-  y    = {c:all[c]  for c,s in enumerate(names) if s[-1] in "-+"},
-  w    = {c:(0 if s[-1] =="-" else 1) for c,s in enumerate(names) if c in y}
-  return o(names = names, all = all, w=w, y=y,
-    x = {c:all[c] for c,s in enumerate(names) if s[-1] not in "X-+"})
-
-#--------------------------------------------------------------------
-def adds(src, col=None):
-  for x in src:
-    col = col or (Sym if type(x) is str else Num)()
-    add(col,x)
-  return col
-
-def add(col,x):
-  if x != "?": 
-    if type(col) is Num: col.append(x)
-    else: col[x] = 1 + col.get(x,0)
-
-def ok(col):
-  return sorted(col) if type(col) is Num else col
-
-def div(col):
-  if type(col) is Num:
-    n=len(col)//10; return (col[9*n] - col[n])/2.56
-  else:
-    N = sum(col.values())
-    return -sum(p*math.log(p) for n in col.values() if (p:=n/N) >0)
-
-def norm(col,x):
-  lo,hi = col[0],col[-1]
-  return x if x=="?" else (x - lo)/(hi - lo + 1e-32)
+def Cols(txt : list[str]) -> o:
+  tmp = {c for c,s in enumerate(txt) if s[-1] != "X"}
+  all = {c:(big,-big) if txt[c][0].isupper() else Sym() for c in tmp} 
+  y   = {c:txt[c][-1]!="-" for c in tmp if txt[c][-1] in "-+"}
+  x   = {c for c in tmp if c not in y}
+  return o(names=txt, all=all, y=y, x=x)
 
 #--------------------------------------------------------------------
-def dist(src) -> float:
-  d,n = 0,0
-  for v in src: n,d = n+1, d + v**the.p;
+def norm(x,lo,hi): return (x - lo) / (hi - lo + 1e-32) 
+
+def dist(src):
+  n,d = 0,0
+  for x in src: n,d = n + 1, d + x ** the.p
   return (d/n) ** (1/the.p)
 
 def disty(data:Data, row:Row) -> float:
-  return dist(abs(norm(col, row[c]) - w[c]) 
-              for c,col in data.cols.y.items())
-
-def besty(data:Data,rows=None) -> list[Row]:
-  return min(rows or data.rows, key=lambda r: disty(data,r))
+  return dist(abs(norm(row[c], *data.cols.all[c]) - w)
+              for c,w in data.cols.y.items())
 
 def distx(data:Data, row1:Row, row2:Row) -> float:
   def _aha(col, a,b):
     if a==b=="?": return 1
     if type(col) is Sym: return a != b
-    a,b = norm(col,a), norm(col,b)
+    a,b = norm(a, *col), norm(b, *col)
     a = a if a != "?" else (0 if b>0.5 else 1)
     b = b if b != "?" else (0 if a>0.5 else 1)
     return abs(a - b)
-  return dist(_aha(col, row1[c], row2[c])  
-              for c,col in data.cols.x.items())
+  return dist(_aha(data.cols.all[x], row1[x], row2[x])  
+              for x in data.cols.x)
 
 #--------------------------------------------------------------------
-def projectToLine(data,rows):
+def project(data,rows):
   zero, *few = random.choices(rows, k=the.Few)
   D  = lambda r1,r2:distx(data,r1,r2)
   lo = max(few, key= lambda r: D(zero,r))
@@ -96,88 +83,110 @@ def projectToLine(data,rows):
   x  = lambda row: (D(row,lo)**2 +c*c - D(row,hi)**2)/(2*c + 1e-32)
   return sorted(rows, key=x)
 
-def cut1(rows): return len(rows)//2
-
-def cut2(ids):
-  def fn(rows):
-    N         = len(rows)
-    out,e,eps = None, 1e32, N**.5
-    Y         = lambda row: ids[id(row)]
-    l,r       = Sym(), adds([Y(row) for row in rows], Sym())
-    for n,row in enumerate(rows):
-      r[Y(row)] -= 1
-      l[Y(row)] += 1
-      if n >= eps and N-n >= eps:
-        if (now := (n*div(l) + (N-n)*div(r))/N) < e:
-          out,e = n,now
-    return out
-  return fn
-
-def cluster(data, rows=None, stop=4, cut=cut1):
-  def go(rows, cid):
+def cluster(data, rows=None, stop=None):
+  def go(rows, cid,stop):
     if len(rows) >= stop:
-      if n := cut(projectToLine(data,rows)):
-        return go(rows[n:], 1 + go(rows[:n], cid))
+      rows = project(data,rows)
+      n = len(rows)//2
+      return go(rows[n:], 1 + go(rows[:n], cid,stop), stop)
     for row in rows: ids[id(row)] = cid
     return cid
   ids = {}
-  go(shuffle(rows or data.rows),1)
+  rows = rows or data.rows
+  go(shuffle(rows),1,stop or len(rows)**.5)
   return ids
 
-def clusters(data, rows=None, stop=4):
-  ids= cluster(data,rows,stop,4,cut1)
-  return ids, cluster(data, rows, stop, 4, cut2(ids))
-
-#--------------------------------------------------------------------
-treeOps = {'<=' : lambda x,y: x <= y, 
-           '==' : lambda x,y:x == y, 
-           '>'  : lambda x,y:x > y}
-
+#-------------------------------------------------------------
+# klass 
 def treeSelects(row:Row, op:str, at:int, y:Atom) -> bool: 
-  return (x := row[at]) == "?" or treeOps[op](x, y)
+  "Have we selected this row?"
+  if (x:=row[at]) == "?" : return True
+  if op == "<="          : return x <= y
+  if op == "=="          : return x == y
+  if op == ">"           : return x > y
 
- 
-def Tree(data:Data, Klass=Num, Y=None, how=None) -> Data:
-  Y = Y or (lambda row: disty(data, row))
-  data.kids, data.how = [], how
-  data.ys = adds(Y(row) for row in data.rows)
-  if len(data.rows) >= the.leaf:
-    hows = [how for col in data.cols.x 
-            if (how := treeCuts(col,data.rows,Y,Klass))]
-    if hows:
-      for how1 in min(hows, key=lambda c: c.xpect).hows:
-        rows1 = [r for r in data.rows if treeSelects(r, *how1)]
-        if the.leaf <= len(rows1) < len(data.rows):
-          data.kids += [Tree(clone(data,rows1), Klass, Y, how1)]
-  return data
+def Tree(data, rows=None, Y=None,  how=None):
+  "Create tree from list of lists"
+  rows = rows or data.rows
+  Y    = Y or (lambda row: disty(data,row))
+  tree = o(rows=rows, how=how, kids=[], mu=mean([Y(r) for r in rows]))
+  if len(rows) >= the.leaf:
+    spread, cuts = min(treeCuts(x, data.cols.all[x], rows,Y) 
+                       for x in data.cols.x)
+    if spread < big:
+      for cut in cuts:
+        subset = [r for r in rows if treeSelects(r, *cut)]
+        if the.leaf <= len(subset) < len(rows):
+          tree.kids += [Tree(data, subset, Y, cut)]
+  return tree
 
-def treeCuts(col:o, rows:list[Row], Y:callable, Klass:callable) -> o:
-  def _sym(sym):
-    d, n = {}, 0
-    for row in rows:
-      if (x := row[col.at]) != "?":
-        n += 1
-        d[x] = d.get(x) or Klass()
-        add(d[x], Y(row))
-    return o(xpect = sum(c.n/n * div(c) for c in d.values()),
-             hows = [("==",col.at,x) for x in d])
+def treeCuts(at, col, rows, Y:callable):
+  "Return best cut for column at position 'at'"
+  xys = sorted([(r[at], Y(r)) for r in rows if r[at] != "?"])
+  return (_symCuts if type(col) is Sym else _numCuts)(at,xys)
 
-  def _num(num):
-    out, b4, lhs, rhs = None, None, Klass(), Klass()
-    xys = [(row[col.at], add(rhs, Y(row))) # add returns the "y" value
-           for row in rows if row[col.at] != "?"]
-    for x, y in sorted(xys, key=lambda z: z[0]):
-      if x != b4 and the.leaf <= lhs.n <= len(xys) - the.leaf:
-        now = (lhs.n * div(lhs) + rhs.n * div(rhs)) / len(xys)
-        if not out or now < out.xpect:
-          out = o(xpect=now, hows=[("<=",col.at,b4), (">",col.at,b4)])
-      add(lhs, sub(rhs, y))
-      b4 = x
-    return out
+def _symCuts(at,xys) -> (float, list):
+  "Cuts for symbolic column."
+  d = {}
+  for x, y in xys:
+    d[x]    = d.get(x) or {}
+    d[x][y] = 1 + d[x].get(y,0) 
+  here = sum(sum(ys.values())/len(xys) * ent(ys) for ys in d.values())
+  return here, [("==", at, x) for x in d]
 
-  return (_sym if col.it is Sym else _num)(col)
+def _numCuts(at,xys) -> (float, list):
+  "Cuts for numeric columns."
+  spread, cuts, left, right = big, [], {}, {}
+  for _, y in xys: 
+    right[y] = 1 + right.get(y,0)
+  for i, (x, y) in enumerate(xys[:-1]):
+    right[y] -= 1
+    left[y]   = 1 + left.get(y,0)
+    if x != xys[i+1][0]:
+      if the.leaf <= i < len(xys) - the.leaf:
+        now = (i*ent(left) + (len(xys) - i)*ent(right)) / len(xys)
+        if now < spread:
+          spread = now
+          cuts = [("<=", at, x), (">", at, x)]
+  return spread, cuts
+
+# ## Tree Processing -------------------------------------------------
+def treeLeaf(tree, row):
+  "Find which leaf a row belongs to"
+  for kid in tree.kids:
+    if treeSelects(row, *kid.how): return treeLeaf(kid, row)
+  return tree
+
+def treeNodes(tree, lvl=0):
+  "Iterate over all tree nodes"
+  yield lvl, tree
+  for kid in sorted(tree.kids, key=lambda kid: kid.mu):
+    yield from treeNodes(kid, lvl + 1)
+
+def treeShow(data,tree,win=None):
+  "Display tree structure with Y means"
+  win = win or (lambda v:int(100*v))
+  n   = {s:0 for s in data.cols.names}
+  print(" ")
+  for lvl, node in treeNodes(tree):
+    if lvl == 0: continue
+    op, at, y = node.how
+    indent = '|  ' * (lvl - 1)
+    rule = f"if {data.cols.names[at]} {op} {y}"
+    n[data.cols.names[at]] += 1
+    leaf = ";" if not node.kids else ""
+    print(f"n:{len(node.rows):4}   win:{win(node.mu):5}     ",end="")
+    print(f"{indent}{rule}{leaf}")
+  print("\nUsed: ",*sorted([k for k in n.keys() if n[k]>0],
+                           key=lambda k: -n[k]))
 
 #--------------------------------------------------------------------
+def mean(lst): return sum(lst) / len(lst)
+
+def ent(d):
+  N = sum(d.values())
+  return -sum(p*log(p,2) for n in d.values() if (p:=n/N) if n>0)
+
 def coerce(s:str) -> Atom:
   for fn in [int,float]:
     try: return fn(s)
@@ -194,20 +203,29 @@ def csv(file: str ) -> Iterator[Row]:
 def shuffle(lst:list) -> list:
   random.shuffle(lst); return lst
 
-def value(x):
-  return -1e32 if x=="?" else x
-
 def dataDwin(file=None):
   data = Data(csv(file or the.file))
   D    = lambda row: disty(data,row)
   b4   = adds(D(row) for row in data.rows)
   return data, D, lambda v: 100*(1 - (v - b4.lo)/(b4.mu - b4.lo))
-  
+ 
+def eg__data():
+  print(Data(csv(the.file)).cols.all)
+ 
+def eg__cluster():
+  print(cluster(Data(csv(the.file))).keys())
+ 
+def eg__tree():
+  data  = Data(csv(the.file))
+  data1 = clone(data, random.choices(data.rows, k=32))
+  tree  = Tree(data1)
+  print(len([leaf for _,leaf in treeNodes(tree) if not leaf.kids]))
+  treeShow(data1, tree)
+
 def eg__demo():
   random.seed(the.seed)
   data,D,win = dataDwin(the.file)
   for b in range(10,200,20):
-    print(".")
     alls=[]
     somes=[]
     for _ in range(50):
