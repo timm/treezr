@@ -10,7 +10,7 @@ Qty  = int | float
 Atom = Qty | str | bool
 Row  = list[Atom]
 Rows = list[Row]
-Num  = tuple
+Num  = list
 Sym  = dict
 Col  = Num | Sym
 Data = o
@@ -20,11 +20,28 @@ the = o(p=2, few=64, seed=1234567891, Few=256, leaf=4,
 
 big = 1e32
 
+def ok(col): 
+  return sorted(col) if type(col) is Num else col
+
+def div(col): 
+  return stdev(col) if type(col) is Num else entropy(col)
+
+def mid(col): 
+  return col[len(col)//2] if type(col) is Num else max(col,key=col.get)
+
+def stdev(a):
+  n = len(a)//10; return (a[n*9] - a[n]) / 2.56
+
+def entropy(d):
+  N = sum(d.values())
+  return -sum(p*log(p,2) for n in d.values() if (p:=n/N) if n>0)
+
 #--------------------------------------------------------------------
 def Data(src: Iterable):
   rows = iter(src)
   data = o(cols=Cols(next(rows)), rows=[])
   [adds(data,row) for row in rows]
+  data.all = [ok(col) for col in data.col.all]
   return data
 
 def adds(data,row):
@@ -45,7 +62,7 @@ def clone(data,rows=[]):
 
 def Cols(txt : list[str]) -> o:
   tmp = {c for c,s in enumerate(txt) if s[-1] != "X"}
-  all = {c:(big,-big) if txt[c][0].isupper() else Sym() for c in tmp} 
+  all = {c:Num() if txt[c][0].isupper() else Sym() for c in tmp} 
   y   = {c:txt[c][-1]!="-" for c in tmp if txt[c][-1] in "-+"}
   x   = {c for c in tmp if c not in y}
   return o(names=txt, all=all, y=y, x=x)
@@ -128,7 +145,7 @@ def treeCuts(at, col, rows, Y:callable):
 def _symCuts(at,xys) -> (float, list):
   "Cuts for symbolic column."
   d = {}
-  for x, y in xys:
+  for x,y in xys:
     d[x]    = d.get(x) or {}
     d[x][y] = 1 + d[x].get(y,0) 
   here = sum(sum(ys.values())/len(xys) * ent(ys) for ys in d.values())
@@ -182,10 +199,6 @@ def treeShow(data,tree,win=None):
 
 #--------------------------------------------------------------------
 def mean(lst): return sum(lst) / len(lst)
-
-def ent(d):
-  N = sum(d.values())
-  return -sum(p*log(p,2) for n in d.values() if (p:=n/N) if n>0)
 
 def coerce(s:str) -> Atom:
   for fn in [int,float]:
